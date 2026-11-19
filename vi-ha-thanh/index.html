@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hà Nội Phố Vị - Cẩm Nang Ẩm Thực & Quán Ngon Cổ Điển</title>
+  <meta name="description" content="Trang web gợi ý 744 quán ăn, nhà hàng đặc sản Hà Nội với định vị Google Maps, bộ lọc đa chiều theo giá, số người, địa điểm, sự kiện và máy Gashapon chọn món ngẫu nhiên độc đáo." />
+  <meta name="keywords" content="quán ăn hà nội, phở bát đàn, bún chả đắc kim, chả cá thăng long, ẩm thực phố cổ, google maps nhà hàng hà nội, hôm nay ăn gì" />
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏮</text></svg>" />
+
+  <!-- Google Fonts: Cormorant Garamond, Playfair Display, Be Vietnam Pro -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Top Notification & Sound Control Bar -->
+  <aside class="top-notice-bar" aria-label="Thanh thông tin">
+    <div class="notice-inner">
+      <div>
+        <span>🏮 Cẩm nang ẩm thực kinh kỳ • Dữ liệu định vị xác thực trên Google Maps & Michelin Guide</span>
+      </div>
+      <div class="top-bar-controls">
+        <div id="authGuestActions" class="auth-bar-actions">
+          <button id="btnOpenLogin" class="auth-top-btn auth-top-login" title="Đăng nhập tài khoản thực khách">
+            <span>🔑</span> <span>Đăng nhập</span>
+          </button>
+          <button id="btnOpenRegister" class="auth-top-btn auth-top-register" title="Tạo tài khoản mới">
+            <span>✨</span> <span>Tạo tài khoản</span>
+          </button>
+        </div>
+
+        <div id="authUserChip" class="auth-user-chip" hidden>
+          <button id="btnOpenProfile" class="auth-profile-btn" title="Xem hồ sơ tài khoản & Sổ tay quán quen">
+            <span class="auth-avatar-badge" id="authAvatarBadge">🏮</span>
+            <span id="authUserName">Thực khách</span>
+          </button>
+          <button id="btnQuickLogout" class="auth-logout-mini" title="Đăng xuất">Đăng xuất</button>
+        </div>
+
+        <button id="soundToggleBtn" class="sound-toggle-btn" title="Bật/Tắt hiệu ứng âm thanh">
+          <span>🔔</span> <span>Âm thanh: Bật</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Masthead Hero Frame (Indochine Newspaper Aesthetic) -->
+  <header class="masthead">
+    <div class="masthead-frame">
+      <div class="masthead-top">
+        <span>Khai ấn năm 1946 • Lưu truyền di sản ẩm thực Tràng An</span>
+        <span>Hà Nội 36 Phố Phường</span>
+        <span>Ấn bản số điện tử</span>
+      </div>
+
+      <div class="masthead-hero">
+        <div class="title-group">
+          <div class="brand-badge">
+            <span>✨</span> KHÁM PHÁ 744 QUÁN ĂN & ĐẶC SẢN CHUẨN VỊ TỪ GOOGLE MAPS
+          </div>
+          <h1 class="site-title">HÀ NỘI PHỐ VỊ</h1>
+          <p class="site-subtitle">
+            "Miếng ngon Hà Nội không chỉ làm no cái bụng, mà còn đánh thức cả một trời ký ức thanh tao"
+          </p>
+        </div>
+
+        <div class="hero-actions">
+          <button id="btnOpenClawHero" class="btn-wheel-hero" title="Mở máy Gashapon ẩm thực chọn quán ngẫu nhiên">
+            <span style="font-size: 1.3rem;">🎰</span>
+            <span>Hôm Nay Ăn Gì? (Máy Gashapon Món Ăn)</span>
+          </button>
+          
+          <button id="btnOpenFavoritesHero" class="btn-favorites" title="Xem danh sách quán đã lưu">
+            <span>❤️</span>
+            <span>Sổ Tay Quán Quen</span>
+            <span id="favCountBadge" class="favorites-count-badge">0</span>
+          </button>
+
+          <button id="btnOpenCommunityHero" class="btn-community-hero" title="Tham gia nhóm chat khu vực & chat với bạn bè">
+            <span>💬</span>
+            <span>Nhóm Chat &amp; Bạn Bè</span>
+          </button>
+
+          <button id="btnOpenReelsHero" class="btn-reels-hero" title="Lướt Reels ẩm thực & đăng bài chia sẻ món ngon">
+            <span>🎬</span>
+            <span>Lướt Reels &amp; Up Bài</span>
+          </button>
+
+          <a href="games.html" id="btnOpenGamesHero" class="btn-games-hero" style="text-decoration:none;" title="Mở trang Trò Chơi Phố Cổ">
+            <span>🎮</span>
+            <span>Trò Chơi</span>
+          </a>
+
+          <button id="btnOpenBillHero" class="btn-bill-hero" title="Tính tiền, chia bill theo đầu người & xuất hóa đơn chi tiết">
+            <span>🧾</span>
+            <span>Tính Tiền &amp; Chia Bill</span>
+          </button>
+
+          <button id="btnOpenOrdersHubHero" class="btn-orders-hero" title="Theo dõi đơn giao hàng tận nơi & lịch đặt bàn trước">
+            <span>🛵</span>
+            <span>Đơn Giao &amp; Đặt Bàn</span>
+            <span id="ordersHubCountBadge" class="orders-count-badge">0</span>
+          </button>
+
+          <button id="btnOpenMoviesHero" class="btn-movies-hero" title="Rạp Chiếu Phim Hà Nội Phố Vị - Xem phim Full HD không quảng cáo cá độ">
+            <span>🍿</span>
+            <span>Xem Phim</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="stats-banner">
+        <div class="stat-item">
+          <span class="stat-icon">🍲</span>
+          <div class="stat-text">
+            <strong>744 Quán Ngon Khắp Hà Nội</strong>
+            <span>Mỗi quận đều có từ 10+ quán tuyển chọn</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-icon">⭐</span>
+          <div class="stat-text">
+            <strong>Đánh Giá Google Maps 4.0+</strong>
+            <span>Hàng nghìn review thực tế</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-icon">🧭</span>
+          <div class="stat-text">
+            <strong>Chỉ Đường Trực Tiếp</strong>
+            <span>1-click mở Google Maps</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-icon">🎯</span>
+          <div class="stat-text">
+            <strong>Bộ Lọc 4 Chiều</strong>
+            <span>Giá • Người • Quận • Dịp</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="main-wrapper">
+
+    <!-- 1-Click Lucky Dice Quick Bar -->
+    <section class="lucky-banner" aria-label="Gợi ý tức thì">
+      <div class="lucky-content">
+        <div class="lucky-icon">🎲</div>
+        <div class="lucky-text">
+          <h4>Bạn đang phân vân chưa biết chọn quán nào hôm nay?</h4>
+          <p>Bấm một chạm để hệ thống chọn ngay một quán ăn phù hợp theo tiêu chí hiện tại của bạn.</p>
+        </div>
+      </div>
+      <div class="lucky-actions">
+        <button id="btnLuckyFast" class="btn-lucky-fast">
+          <span>✨</span> Tung Xúc Xắc May Mắn (1 Chạm)
+        </button>
+      </div>
+    </section>
+
+    <!-- Smart Filter Cabinet -->
+    <section class="filter-cabinet" aria-label="Bộ lọc tìm kiếm">
+      <!-- Search Input -->
+      <div class="search-box-row">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            id="searchInput" 
+            class="search-input" 
+            placeholder="Tìm theo món ăn (phở, bún chả, chả cá, ốc...), tên quán hoặc tên phố..." 
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+      <!-- Multi-Dimensional Filters -->
+      <div class="filter-grid">
+        <!-- 1. Giá thành -->
+        <div class="filter-column">
+          <label for="priceTierSelect">
+            <span>💰</span> Giá thành (Mỗi người)
+          </label>
+          <select id="priceTierSelect" class="custom-select">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+
+        <!-- 2. Số lượng người -->
+        <div class="filter-column">
+          <label for="peopleCategorySelect">
+            <span>👥</span> Số lượng người đi
+          </label>
+          <select id="peopleCategorySelect" class="custom-select">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+
+        <!-- 3. Địa điểm / Quận -->
+        <div class="filter-column">
+          <label for="districtSelect">
+            <span>📍</span> Địa điểm (Quận / Phố)
+          </label>
+          <select id="districtSelect" class="custom-select">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+
+        <!-- 4. Sự kiện quan trọng / Dịp -->
+        <div class="filter-column">
+          <label for="occasionSelect">
+            <span>✨</span> Sự kiện / Dịp đi ăn
+          </label>
+          <select id="occasionSelect" class="custom-select">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Filter Quick Pills & Reset -->
+      <div class="filter-pills-row">
+        <div class="quick-pills">
+          <button class="pill-btn active" data-filter="all">Tất cả quán</button>
+          <button class="pill-btn" data-filter="hadong">🏘️ Quán ngon Hà Đông</button>
+          <button class="pill-btn" data-filter="michelin">🎖️ Đạt giải Michelin</button>
+          <button class="pill-btn" data-filter="reservable">🪑 Có đặt bàn trước</button>
+          <button class="pill-btn" data-filter="favorites">❤️ Quán đã lưu</button>
+        </div>
+        <div>
+          <button id="btnResetFilters" class="btn-reset-filters">↺ Xóa tất cả bộ lọc</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results Count & Sorting Header -->
+    <div class="results-header" id="resultsHeader">
+      <h2 id="resultsCount" class="results-count">Đang tải danh sách quán...</h2>
+      
+      <div class="sort-select-wrapper">
+        <label for="sortBySelect">Sắp xếp theo:</label>
+        <select id="sortBySelect" class="sort-select">
+          <option value="rating_desc">⭐ Đánh giá cao nhất (Google Maps)</option>
+          <option value="reviews_desc">💬 Lượt đánh giá nhiều nhất</option>
+          <option value="price_asc">💵 Giá từ thấp đến cao</option>
+          <option value="price_desc">💎 Giá từ cao xuống thấp</option>
+          <option value="name_asc">🔤 Tên quán (A - Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- District Quick Tab Strip (Thanh lọc quận phân tầng nhanh, chia nhỏ trang) -->
+    <nav class="district-strip-wrapper" id="districtStripWrapper" aria-label="Thanh lọc nhanh theo quận">
+      <div class="district-tabs" id="districtTabs">
+        <!-- Rendered dynamically in app.js -->
+      </div>
+    </nav>
+
+    <!-- Restaurants Grid -->
+    <section id="restaurantsGrid" class="restaurants-grid" aria-label="Danh sách nhà hàng quán ăn">
+      <!-- Cards rendered dynamically via app.js -->
+    </section>
+
+    <!-- Interactive Pagination Container (Bộ phân trang chống cuộn sâu) -->
+    <nav id="paginationContainer" class="pagination-container" aria-label="Bộ phân trang danh sách quán">
+      <!-- Rendered dynamically in app.js -->
+    </nav>
+
+  </main>
+
+  <!-- Interactive Lucky Claw Machine Modal (Máy Gắp Ẩm Thực Phố Cổ) -->
+  <div id="clawModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="clawTitle">
+    <div class="modal-container claw-modal-container">
+      <button class="modal-close-btn" id="btnCloseClawModal" aria-label="Đóng">&times;</button>
+      
+      <div class="claw-modal-header">
+        <h2 id="clawTitle">🎰 MÁY GASHAPON ẨM THỰC</h2>
+        <p>Đút xu vào khe 🪙 → xoay tay cầm đủ 1 vòng ↻ → bóng lăn ra → bấm mở bóng để biết hôm nay ăn gì!</p>
+      </div>
+
+      <div class="gacha-stage">
+        <!-- Step indicator -->
+        <div class="gacha-steps" aria-hidden="true">
+          <span class="gacha-step" data-step="1">① Đút xu</span>
+          <span class="gacha-step" data-step="2">② Xoay tay cầm</span>
+          <span class="gacha-step" data-step="3">③ Mở bóng</span>
+        </div>
+
+        <!-- Gashapon machine -->
+        <div class="gacha-machine" id="gachaMachine">
+          <div class="gacha-sign">
+            <span class="gacha-sign-face">🏮</span>
+            <span class="gacha-sign-text">PHỐ VỊ</span>
+          </div>
+
+          <div class="gacha-dome">
+            <div class="gacha-toys">🧸 🍜 🏮 🥟 🧋 🍡</div>
+            <div class="gacha-dome-band">HÀ NỘI PHỐ VỊ • GASHAPON</div>
+            <div class="gacha-rod"></div>
+            <div class="gacha-globe" id="gachaGlobe">
+              <!-- Balls rendered by app.js -->
+            </div>
+            <div class="gacha-glare"></div>
+          </div>
+
+          <div class="gacha-collar">1 XU = 1 QUÁN NGON</div>
+
+          <div class="gacha-body">
+            <div class="gacha-emblem">
+              <span class="gacha-emblem-icon">🏮</span>
+              <span>PHỐ VỊ</span>
+            </div>
+
+            <div class="gacha-panel">
+              <div class="gacha-coin-slot" id="gachaCoinSlot" title="Khe đút xu">
+                <div class="slot-hole"></div>
+                <span>KHE XU</span>
+              </div>
+              <button class="gacha-knob" id="gachaKnob" aria-label="Xoay tay cầm" aria-disabled="true">
+                <span class="knob-grip"></span>
+              </button>
+              <span class="knob-hint">XOAY ↻</span>
+            </div>
+
+            <div class="gacha-exit" id="gachaExit">
+              <div class="gacha-exit-flap"></div>
+              <button class="gacha-out-ball" id="gachaOutBall" aria-label="Bấm để mở bóng gashapon">
+                <span class="half top"></span>
+                <span class="half bottom"></span>
+                <span class="ball-prize">🍜</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="gacha-base"></div>
+        </div>
+
+        <!-- Status line -->
+        <div class="gacha-status" id="gachaStatus">🪙 Kéo đồng xu vào khe (hoặc bấm vào xu) để bắt đầu</div>
+
+        <!-- Coin tray -->
+        <div class="gacha-coin-tray">
+          <button class="gacha-coin" id="gachaCoin" aria-label="Đồng xu, kéo vào khe hoặc bấm để đút xu">XU</button>
+          <span>Kéo xu thả vào <strong>KHE XU</strong> trên máy, hoặc chỉ cần bấm vào xu</span>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="claw-stats-bar" id="clawStatsBar">
+          <span>🔮 Trong máy: <strong id="clawPoolCount">744</strong> quán đang chờ bạn</span>
+          <span>🎯 Mỗi xu = 1 bóng bất ngờ</span>
+        </div>
+
+        <!-- Source Toggle -->
+        <div class="claw-source-toggle">
+          <label>
+            <input type="radio" name="clawSource" value="filtered" checked />
+            Quay theo bộ lọc hiện tại
+          </label>
+          <span style="color: var(--border-ornate);">|</span>
+          <label>
+            <input type="radio" name="clawSource" value="all" />
+            Quay trong tất cả 744 quán
+          </label>
+        </div>
+      </div>
+
+      <!-- Result Card -->
+      <div id="clawWinnerCard" class="winner-card claw-winner-card">
+        <!-- Rendered upon winning -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Restaurant Details Modal -->
+  <div id="detailModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-container detail-modal-container">
+      <!-- Populated via openDetailModal(id) in app.js -->
+    </div>
+  </div>
+
+  <!-- User Authentication & Profile Modal (Đăng Nhập & Tạo Tài Khoản) -->
+  <div id="authModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="modal-container auth-modal-container">
+      <button class="modal-close-btn" id="btnCloseAuthModal" aria-label="Đóng">&times;</button>
+
+      <div class="auth-modal-header">
+        <div class="auth-seal">🏮</div>
+        <h2 id="authModalTitle">THẺ THỰC KHÁCH KINH KỲ</h2>
+        <p id="authModalSub">Đồng bộ Sổ Tay Quán Quen và lưu giữ hành trình ẩm thực Hà Nội của riêng bạn</p>
+      </div>
+
+      <!-- Tabs: Đăng nhập / Tạo tài khoản -->
+      <div class="auth-tabs" id="authTabsBar" role="tablist">
+        <button class="auth-tab active" id="tabBtnLogin" data-tab="login" role="tab" aria-selected="true">
+          🔑 Đăng Nhập
+        </button>
+        <button class="auth-tab" id="tabBtnRegister" data-tab="register" role="tab" aria-selected="false">
+          ✨ Tạo Tài Khoản
+        </button>
+      </div>
+
+      <!-- Alert message box -->
+      <div id="authAlertBox" class="auth-alert" hidden></div>
+
+      <!-- FORM 1: ĐĂNG NHẬP -->
+      <form id="formLogin" class="auth-form" autocomplete="on" novalidate>
+        <div class="auth-field">
+          <label for="loginIdentifier">Email hoặc Tên đăng nhập</label>
+          <div class="auth-input-wrap">
+            <span class="auth-input-icon">👤</span>
+            <input type="text" id="loginIdentifier" placeholder="Nhập email hoặc username..." required />
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label for="loginPassword">Mật khẩu</label>
+          <div class="auth-input-wrap">
+            <span class="auth-input-icon">🔒</span>
+            <input type="password" id="loginPassword" placeholder="Nhập mật khẩu..." required />
+            <button type="button" class="auth-eye-btn" data-toggle-pass="loginPassword" title="Hiện/Ẩn mật khẩu">👁</button>
+          </div>
+        </div>
+
+        <div class="auth-row-between">
+          <label class="auth-checkbox">
+            <input type="checkbox" id="loginRemember" checked />
+            <span>Ghi nhớ đăng nhập</span>
+          </label>
+          <button type="button" class="auth-link-btn" id="btnSwitchToRegister">Chưa có tài khoản? Đăng ký →</button>
+        </div>
+
+        <button type="submit" class="auth-submit-btn">
+          <span>🏮</span> <span>ĐĂNG NHẬP NGAY</span>
+        </button>
+
+        <div class="auth-divider"><span>hoặc trải nghiệm nhanh</span></div>
+
+        <button type="button" id="btnDemoLogin" class="auth-demo-btn">
+          ⚡ Dùng thử ngay với tài khoản Thực Khách Mẫu (1 chạm)
+        </button>
+      </form>
+
+      <!-- FORM 2: TẠO TÀI KHOẢN -->
+      <form id="formRegister" class="auth-form" autocomplete="on" hidden novalidate>
+        <div class="auth-field">
+          <label for="regFullName">Họ và tên hiển thị</label>
+          <div class="auth-input-wrap">
+            <span class="auth-input-icon">🏷️</span>
+            <input type="text" id="regFullName" placeholder="Ví dụ: Nguyễn Minh Anh" required />
+          </div>
+        </div>
+
+        <div class="auth-field-grid">
+          <div class="auth-field">
+            <label for="regUsername">Tên đăng nhập / Email</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">✉️</span>
+              <input type="text" id="regUsername" placeholder="minhanh@gmail.com" required />
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="regDistrict">Khu vực yêu thích</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">📍</span>
+              <select id="regDistrict">
+                <option value="Hoàn Kiếm">Quận Hoàn Kiếm</option>
+                <option value="Ba Đình">Quận Ba Đình</option>
+                <option value="Tây Hồ">Quận Tây Hồ</option>
+                <option value="Đống Đa">Quận Đống Đa</option>
+                <option value="Hai Bà Trưng">Quận Hai Bà Trưng</option>
+                <option value="Cầu Giấy">Quận Cầu Giấy</option>
+                <option value="Hà Đông">Quận Hà Đông</option>
+                <option value="Thanh Xuân">Quận Thanh Xuân</option>
+                <option value="Long Biên">Quận Long Biên</option>
+                <option value="Hoàng Mai">Quận Hoàng Mai</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-field-grid">
+          <div class="auth-field">
+            <label for="regPassword">Mật khẩu (tối thiểu 6 ký tự)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔒</span>
+              <input type="password" id="regPassword" placeholder="Tối thiểu 6 ký tự..." required />
+              <button type="button" class="auth-eye-btn" data-toggle-pass="regPassword" title="Hiện/Ẩn mật khẩu">👁</button>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="regPasswordConfirm">Nhập lại mật khẩu</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🛡️</span>
+              <input type="password" id="regPasswordConfirm" placeholder="Xác nhận mật khẩu..." required />
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-strength" id="regPassStrength">
+          <div class="strength-bar"><span id="regStrengthFill"></span></div>
+          <span id="regStrengthText">Nhập mật khẩu ít nhất 6 ký tự</span>
+        </div>
+
+        <button type="submit" class="auth-submit-btn">
+          <span>✨</span> <span>TẠO TÀI KHOẢN THỰC KHÁCH</span>
+        </button>
+
+        <div class="auth-footer-switch">
+          Đã có tài khoản? <button type="button" class="auth-link-btn" id="btnSwitchToLogin">Đăng nhập tại đây</button>
+        </div>
+      </form>
+
+      <!-- VIEW 3: HỒ SƠ THỰC KHÁCH (khi đã đăng nhập — có up ảnh, sở thích, link Facebook) -->
+      <div id="viewProfile" class="auth-profile-view" hidden>
+        <div class="profile-card">
+          <div class="profile-card-top">
+            <div class="profile-avatar-upload-wrap">
+              <div class="profile-avatar-large" id="profileAvatarLarge">🏮</div>
+              <label class="profile-avatar-upload-btn" title="Tải ảnh đại diện từ máy">
+                📷 Đổi ảnh
+                <input type="file" id="profileAvatarInput" accept="image/*" hidden />
+              </label>
+              <button type="button" id="btnRemoveAvatar" class="profile-avatar-remove" title="Xóa ảnh đại diện" hidden>✕ Xóa ảnh</button>
+            </div>
+            <div class="profile-meta">
+              <span class="profile-rank-badge">✦ THỰC KHÁCH HÀ THÀNH ✦</span>
+              <h3 id="profileDisplayName">Nguyễn Minh Anh</h3>
+              <p id="profileUsername">@minhanh</p>
+              <a id="profileFbPreview" class="profile-fb-pill" href="#" target="_blank" rel="noopener noreferrer" hidden>
+                📘 Trang Facebook cá nhân ↗
+              </a>
+            </div>
+          </div>
+
+          <div class="profile-stats-grid">
+            <div class="profile-stat-box">
+              <span class="stat-num" id="profileFavCount">0</span>
+              <span class="stat-lbl">Quán quen đã lưu</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="stat-num" id="profileDistrict">Hoàn Kiếm</span>
+              <span class="stat-lbl">Khu vực yêu thích</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="stat-num" id="profileJoinedDate">Hôm nay</span>
+              <span class="stat-lbl">Ngày gia nhập</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form chỉnh sửa thông tin cá nhân -->
+        <form id="formEditProfile" class="profile-edit-form" novalidate>
+          <div class="auth-field-grid">
+            <div class="auth-field">
+              <label for="editFullName">Họ và tên hiển thị</label>
+              <div class="auth-input-wrap">
+                <span class="auth-input-icon">🏷️</span>
+                <input type="text" id="editFullName" placeholder="Nhập tên của bạn..." required />
+              </div>
+            </div>
+            <div class="auth-field">
+              <label for="editDistrict">Khu vực hay đi ăn</label>
+              <div class="auth-input-wrap">
+                <span class="auth-input-icon">📍</span>
+                <select id="editDistrict">
+                  <option value="Hoàn Kiếm">Quận Hoàn Kiếm</option>
+                  <option value="Ba Đình">Quận Ba Đình</option>
+                  <option value="Tây Hồ">Quận Tây Hồ</option>
+                  <option value="Đống Đa">Quận Đống Đa</option>
+                  <option value="Hai Bà Trưng">Quận Hai Bà Trưng</option>
+                  <option value="Cầu Giấy">Quận Cầu Giấy</option>
+                  <option value="Hà Đông">Quận Hà Đông</option>
+                  <option value="Thanh Xuân">Quận Thanh Xuân</option>
+                  <option value="Nam Từ Liêm">Quận Nam Từ Liêm</option>
+                  <option value="Bắc Từ Liêm">Quận Bắc Từ Liêm</option>
+                  <option value="Long Biên">Quận Long Biên</option>
+                  <option value="Hoàng Mai">Quận Hoàng Mai</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="editHobbies">Sở thích ăn uống &amp; gu ẩm thực</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🍜</span>
+              <input type="text" id="editHobbies" placeholder="Ví dụ: Phở bò, Chè khúc bạch, Lẩu riêu cua, Cafe phố cổ..." />
+            </div>
+            <div class="profile-hobby-chips" id="profileHobbyChips">
+              <button type="button" class="hobby-chip" data-hobby="Phở bò">🍜 Phở bò</button>
+              <button type="button" class="hobby-chip" data-hobby="Bún chả">🍢 Bún chả</button>
+              <button type="button" class="hobby-chip" data-hobby="Chè & Ăn vặt">🍧 Chè &amp; Ăn vặt</button>
+              <button type="button" class="hobby-chip" data-hobby="Lẩu & Nướng">🔥 Lẩu &amp; Nướng</button>
+              <button type="button" class="hobby-chip" data-hobby="Đồ Hàn Quốc">🇰🇷 Đồ Hàn</button>
+              <button type="button" class="hobby-chip" data-hobby="Dimsum Trung Hoa">🥟 Dimsum</button>
+              <button type="button" class="hobby-chip" data-hobby="Cafe Vintage">☕ Cafe</button>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="editFacebook">Link Facebook cá nhân</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">📘</span>
+              <input type="url" id="editFacebook" placeholder="https://facebook.com/ten.cua.ban" />
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label for="editBio">Giới thiệu bản thân</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">✍️</span>
+              <input type="text" id="editBio" placeholder="Đôi dòng về bạn để kết nối bạn bè đi ăn cùng..." maxlength="160" />
+            </div>
+          </div>
+
+          <button type="submit" class="auth-submit-btn">
+            <span>💾</span> <span>LƯU THÔNG TIN HỒ SƠ</span>
+          </button>
+        </form>
+
+        <div class="profile-actions profile-actions-row">
+          <button type="button" id="btnProfileViewFavs" class="auth-demo-btn">
+            <span>❤️</span> <span>Sổ Tay Quán Quen</span>
+          </button>
+          <button type="button" id="btnProfileOpenChat" class="auth-demo-btn">
+            <span>💬</span> <span>Mở Nhóm Chat</span>
+          </button>
+          <button type="button" id="btnProfileLogout" class="auth-logout-btn">
+            <span>🚪</span> <span>Đăng Xuất</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Community Groups & Friends Chat Modal (Nhóm Chat Khu Vực & Chat Bạn Bè) -->
+  <div id="communityModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="commModalTitle">
+    <div class="modal-container comm-modal-container">
+      <button class="modal-close-btn" id="btnCloseCommModal" aria-label="Đóng">&times;</button>
+
+      <div class="comm-shell">
+        <!-- Left Sidebar: Groups & Friends -->
+        <aside class="comm-sidebar">
+          <div class="comm-sidebar-head">
+            <h2 id="commModalTitle">💬 CỘNG ĐỒNG HÀ NỘI</h2>
+            <div class="comm-subtabs" role="tablist">
+              <button type="button" class="comm-subtab active" data-comm-tab="groups" role="tab" aria-selected="true">
+                📍 Nhóm Khu Vực
+              </button>
+              <button type="button" class="comm-subtab" data-comm-tab="friends" role="tab" aria-selected="false">
+                👥 Bạn Bè
+              </button>
+            </div>
+            <div class="comm-search-wrap">
+              <input type="text" id="commSearchInput" placeholder="Tìm nhóm quận hoặc bạn bè..." />
+            </div>
+          </div>
+
+          <!-- Group List -->
+          <div id="commGroupList" class="comm-list"></div>
+
+          <!-- Friends List + Add Friend -->
+          <div id="commFriendPane" class="comm-friend-pane" hidden>
+            <div class="comm-add-friend-bar">
+              <input type="text" id="commAddFriendInput" placeholder="Nhập tên hoặc email để kết bạn..." />
+              <button type="button" id="btnAddFriend" title="Thêm bạn bè">➕ Kết bạn</button>
+            </div>
+            <div id="commFriendList" class="comm-list"></div>
+          </div>
+        </aside>
+
+        <!-- Right Main Chat Window -->
+        <section class="comm-main">
+          <header class="comm-chat-header">
+            <div class="comm-chat-peer">
+              <div class="comm-peer-avatar" id="commPeerAvatar">🏮</div>
+              <div>
+                <h3 id="commPeerName">Hội Sành Ăn Hoàn Kiếm</h3>
+                <p id="commPeerMeta">71 quán ngon • Đang hoạt động sôi nổi</p>
+              </div>
+            </div>
+            <div class="comm-header-actions">
+              <div class="comm-bg-wrap">
+                <button type="button" id="btnCommBg" class="comm-action-pill" title="Đổi hình nền cuộc hội thoại (riêng của bạn)">🖼️ Hình nền</button>
+                <div id="commBgMenu" class="comm-bg-menu" hidden>
+                  <div class="comm-bg-menu-title">Hình nền riêng của bạn</div>
+                  <label class="comm-bg-menu-item comm-bg-upload">
+                    📁 Tải ảnh từ máy
+                    <input type="file" id="commBgInput" accept="image/*" hidden />
+                  </label>
+                  <button type="button" class="comm-bg-menu-item" data-bg-preset="sunset">🌇 Hoàng hôn Hồ Tây</button>
+                  <button type="button" class="comm-bg-menu-item" data-bg-preset="lotus">🌿 Xanh lá sen</button>
+                  <button type="button" class="comm-bg-menu-item" data-bg-preset="night">🌌 Đêm phố cổ</button>
+                  <button type="button" class="comm-bg-menu-item" data-bg-preset="peach">🌸 Hồng đào dịu</button>
+                  <button type="button" class="comm-bg-menu-item comm-bg-reset" data-bg-preset="default">↺ Mặc định</button>
+                </div>
+              </div>
+              <button type="button" id="btnCommJoinToggle" class="comm-action-pill">✓ Đã tham gia</button>
+              <button type="button" id="btnCommViewPeer" class="comm-action-pill" hidden>👤 Xem Profile</button>
+            </div>
+          </header>
+
+          <div id="commMessages" class="comm-messages" role="log" aria-live="polite"></div>
+
+          <div id="commVoiceBar" class="comm-voice-bar" hidden>
+            <span class="comm-voice-dot"></span>
+            <span id="commVoiceTimer" class="comm-voice-timer">Đang ghi âm... 00:00</span>
+            <div class="comm-voice-actions">
+              <button type="button" id="btnVoiceCancel" class="comm-voice-cancel">✕ Hủy</button>
+              <button type="button" id="btnVoiceSend" class="comm-voice-send">✓ Gửi Voice</button>
+            </div>
+          </div>
+
+          <div class="comm-composer">
+            <label class="comm-tool-btn" title="Gửi ảnh hoặc video vào đoạn chat">
+              📷
+              <input type="file" id="commPhotoInput" accept="image/*,video/*" hidden />
+            </label>
+            <button type="button" id="btnCommVoice" class="comm-tool-btn" title="Ghi âm gửi tin nhắn thoại (Voice Chat)">
+              🎤
+            </button>
+            <button type="button" id="btnCommShareSpot" class="comm-tool-btn" title="Gợi ý ngẫu nhiên 1 quán ngon vào chat">
+              🍜
+            </button>
+            <textarea id="commTextInput" rows="1" maxlength="400" placeholder="Nhắn tin, gửi ảnh/video hoặc voice chat..."></textarea>
+            <button type="button" id="btnCommSend" class="comm-send-btn" title="Gửi tin nhắn">➤</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Public Member Profile Modal (Xem Profile Bạn Bè / Thành Viên) -->
+  <div id="friendProfileModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="fpName">
+    <div class="modal-container fp-modal-container">
+      <button class="modal-close-btn" id="btnCloseFpModal" aria-label="Đóng">&times;</button>
+      <div class="fp-card">
+        <div class="fp-avatar" id="fpAvatar">🍜</div>
+        <span class="profile-rank-badge">✦ THÀNH VIÊN HÀ NỘI PHỐ VỊ ✦</span>
+        <h3 id="fpName">Minh Thảo</h3>
+        <p class="fp-username" id="fpUsername">@minhthao</p>
+        <p class="fp-bio" id="fpBio">Mê phở sáng &amp; chè phố cổ</p>
+        <div class="fp-info-list">
+          <div><strong>📍 Khu vực yêu thích:</strong> <span id="fpDistrict">Hoàn Kiếm</span></div>
+          <div><strong>🍜 Sở thích ăn uống:</strong> <span id="fpHobbies">Phở bò, Bún chả, Chè khúc bạch</span></div>
+          <div id="fpFbRow"><strong>📘 Facebook:</strong> <a id="fpFbLink" href="#" target="_blank" rel="noopener noreferrer">Xem trang cá nhân ↗</a></div>
+        </div>
+        <div class="fp-actions">
+          <button type="button" id="btnFpMessage" class="auth-submit-btn">💬 Nhắn Tin Riêng</button>
+          <button type="button" id="btnFpToggleFriend" class="auth-demo-btn">➕ Kết Bạn</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Social Reels Feed & Creator Modal (Lướt Reels & Up Bài Chia Sẻ) -->
+  <div id="reelsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Reels Ẩm Thực Hà Nội">
+    <div class="modal-container reels-modal-container">
+      <button class="modal-close-btn reels-close-btn" id="btnCloseReelsModal" aria-label="Đóng">&times;</button>
+
+      <!-- Top Header & Filter Strip -->
+      <header class="reels-topbar">
+        <div class="reels-brand">🎬 REELS PHỐ VỊ</div>
+        <div class="reels-filter-pills">
+          <button type="button" class="reels-filter-btn active" data-reel-filter="all">✨ Tất cả</button>
+          <button type="button" class="reels-filter-btn" data-reel-filter="hot">🔥 Thịnh hành</button>
+          <button type="button" class="reels-filter-btn" data-reel-filter="mine">⭐ Bài của tôi</button>
+        </div>
+        <button type="button" id="btnOpenReelUpload" class="reels-create-btn">➕ Đăng Reel</button>
+      </header>
+
+      <!-- Main Stage: 9:16 Vertical Snap Feed + Nav Arrows -->
+      <div class="reels-stage">
+        <div id="reelsFeed" class="reels-feed" tabindex="0">
+          <!-- Reel slides rendered dynamically by app.js -->
+        </div>
+
+        <div class="reels-nav-arrows" aria-label="Chuyển Reel">
+          <button type="button" id="btnReelPrev" class="reels-nav-btn" title="Reel trước (▲)">▲</button>
+          <button type="button" id="btnReelNext" class="reels-nav-btn" title="Reel tiếp theo (▼)">▼</button>
+        </div>
+
+        <!-- Comments Drawer -->
+        <div id="reelCommentsDrawer" class="reel-comments-drawer" hidden>
+          <div class="reel-drawer-head">
+            <strong id="reelCommentsTitle">💬 Bình luận</strong>
+            <button type="button" id="btnCloseReelComments" class="reel-drawer-close">✕</button>
+          </div>
+          <div id="reelCommentsList" class="reel-comments-list"></div>
+          <div class="reel-comment-input-row">
+            <input type="text" id="reelCommentInput" placeholder="Viết bình luận khen quán hoặc rủ bạn đi ăn..." maxlength="220" />
+            <button type="button" id="btnPostReelComment">Gửi</button>
+          </div>
+        </div>
+
+        <!-- Upload / Create Reel Overlay -->
+        <div id="reelUploadOverlay" class="reel-upload-overlay" hidden>
+          <div class="reel-upload-card">
+            <div class="reel-drawer-head">
+              <strong>🎬 Đăng Reel / Up Bài Chia Sẻ</strong>
+              <button type="button" id="btnCloseReelUpload" class="reel-drawer-close">✕</button>
+            </div>
+            <form id="formCreateReel" class="reel-upload-form" novalidate>
+              <label class="reel-dropzone" id="reelDropzone">
+                <span id="reelDropzoneText">📷 / 🎥 Bấm để chọn Ảnh hoặc Video ngắn từ máy</span>
+                <input type="file" id="reelMediaInput" accept="image/*,video/*" hidden />
+              </label>
+              <div id="reelMediaPreview" class="reel-media-preview" hidden></div>
+
+              <textarea id="reelCaptionInput" rows="2" maxlength="240" placeholder="Chia sẻ cảm nhận về món ngon, góc phố hoặc quán ăn này..." required></textarea>
+
+              <div class="reel-upload-grid">
+                <select id="reelDistrictSelect">
+                  <option value="Hoàn Kiếm">📍 Hoàn Kiếm</option>
+                  <option value="Hà Đông">📍 Hà Đông</option>
+                  <option value="Cầu Giấy">📍 Cầu Giấy</option>
+                  <option value="Tây Hồ">📍 Tây Hồ</option>
+                  <option value="Đống Đa">📍 Đống Đa</option>
+                  <option value="Ba Đình">📍 Ba Đình</option>
+                  <option value="Hai Bà Trưng">📍 Hai Bà Trưng</option>
+                  <option value="Thanh Xuân">📍 Thanh Xuân</option>
+                  <option value="Nam Từ Liêm">📍 Nam Từ Liêm</option>
+                  <option value="Bắc Từ Liêm">📍 Bắc Từ Liêm</option>
+                  <option value="Long Biên">📍 Long Biên</option>
+                  <option value="Hoàng Mai">📍 Hoàng Mai</option>
+                </select>
+                <select id="reelSpotSelect">
+                  <option value="">🍽️ Gắn thẻ quán ăn (tùy chọn)</option>
+                </select>
+              </div>
+
+              <button type="submit" class="auth-submit-btn">🚀 ĐĂNG REEL LÊN BẢNG TIN</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BILL SPLITTER & RECEIPT EXPORTER MODAL ===== -->
+  <div id="billSplitModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="billModalTitle">
+    <div class="modal-container bill-modal-box">
+      <button id="btnCloseBillModal" class="modal-close-btn" aria-label="Đóng bảng tính tiền">✕</button>
+
+      <div class="bill-modal-header">
+        <h2 id="billModalTitle">🧾 TÍNH TIỀN, CHIA BILL &amp; XUẤT HÓA ĐƠN</h2>
+        <p>Ghi rõ từng món, chia đều hoặc chia riêng từng người, và xuất hóa đơn tức thì để gửi cho mọi người.</p>
+      </div>
+
+      <div class="bill-layout-grid">
+        <!-- CỘT TRÁI: NHẬP LIỆU -->
+        <div class="bill-editor-col">
+          <div class="bill-card">
+            <h3 class="bill-sec-title">1. Thông tin bữa ăn &amp; Số người</h3>
+            <div class="bill-info-row">
+              <label class="bill-field">
+                <span>Tên quán / Bữa ăn</span>
+                <input type="text" id="billPlaceName" list="billPlaceSuggestions" placeholder="VD: Bò Tơ Quán Mộc, Phở Bát Đàn..." />
+                <datalist id="billPlaceSuggestions"></datalist>
+              </label>
+              <div class="bill-field bill-people-field">
+                <span>Số người chia</span>
+                <div class="bill-stepper">
+                  <button type="button" id="btnBillPeopleDec" aria-label="Giảm số người">−</button>
+                  <input type="number" id="billPeopleCount" min="1" max="50" value="4" />
+                  <button type="button" id="btnBillPeopleInc" aria-label="Tăng số người">+</button>
+                </div>
+              </div>
+            </div>
+            <details class="bill-members-details">
+              <summary>👥 Đặt tên từng người (tùy chọn để chia món gọi riêng)</summary>
+              <div id="billMemberNamesWrap" class="bill-member-names"></div>
+            </details>
+          </div>
+
+          <div class="bill-card">
+            <h3 class="bill-sec-title">2. Thêm từng món / khoản chi</h3>
+            <form id="billAddItemForm" class="bill-add-form">
+              <input type="text" id="billItemName" placeholder="Tên món (VD: Lẩu riêu cua)" required />
+              <input type="number" id="billItemQty" min="1" max="999" value="1" title="Số lượng" />
+              <input type="text" id="billItemPrice" inputmode="numeric" placeholder="Đơn giá (VD: 150.000)" required />
+              <select id="billItemSplitMode" title="Kiểu chia">
+                <option value="all">Chia đều</option>
+              </select>
+              <button type="submit" class="bill-add-btn">➕ Thêm</button>
+            </form>
+
+            <div class="bill-quick-chips">
+              <span>Thêm nhanh:</span>
+              <button type="button" class="bill-qchip" data-name="Trà đá" data-price="5000">+ Trà đá (5k)</button>
+              <button type="button" class="bill-qchip" data-name="Khăn lạnh" data-price="5000">+ Khăn lạnh (5k)</button>
+              <button type="button" class="bill-qchip" data-name="Nước ngọt" data-price="20000">+ Nước ngọt (20k)</button>
+              <button type="button" class="bill-qchip" data-name="Bia lon" data-price="25000">+ Bia (25k)</button>
+            </div>
+
+            <div id="billItemsList" class="bill-items-list">
+              <!-- Danh sách từng mục được render bởi JS -->
+            </div>
+          </div>
+
+          <div class="bill-card">
+            <h3 class="bill-sec-title">3. Tổng tiền, Giảm giá, VAT &amp; Tiền Tip</h3>
+            <div class="bill-extras-grid bill-extras-4">
+              <label class="bill-field">
+                <span>Tổng tiền (nếu nhập nhanh)</span>
+                <input type="text" id="billDirectTotal" inputmode="numeric" value="0" placeholder="VD: 500.000" />
+              </label>
+              <label class="bill-field">
+                <span>Giảm giá (VNĐ)</span>
+                <input type="text" id="billDiscount" inputmode="numeric" value="0" placeholder="0" />
+              </label>
+              <label class="bill-field">
+                <span>VAT / Phí DV (%)</span>
+                <input type="number" id="billVat" min="0" max="50" step="1" value="0" />
+              </label>
+              <label class="bill-field">
+                <span>Tiền Tip (VNĐ)</span>
+                <input type="text" id="billTip" inputmode="numeric" value="0" placeholder="0" />
+              </label>
+            </div>
+            <div class="bill-live-summary">
+              <div><span>Tạm tính:</span><strong id="billLiveSubtotal">0đ</strong></div>
+              <div><span>VAT / Phí DV:</span><strong id="billLiveVatAmt">0đ</strong></div>
+              <div><span>Tổng cộng:</span><strong id="billLiveGrandTotal" style="color:#8c231e;">0đ</strong></div>
+              <div><span>Mỗi người (<span id="billLivePeople">4</span>):</span><strong id="billLivePerPerson" style="color:#047857;">0đ</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CỘT PHẢI: XEM TRƯỚC HÓA ĐƠN & XUẤT -->
+        <div class="bill-preview-col">
+          <div id="billReceiptPaper" class="bill-receipt-paper">
+            <!-- Nội dung hóa đơn chi tiết render bằng JS -->
+          </div>
+
+          <div class="bill-export-actions">
+            <button type="button" id="btnCopyBillText" class="bill-exp-btn primary">📋 Copy Hóa Đơn</button>
+            <button type="button" id="btnDownloadBillPng" class="bill-exp-btn accent">🖼️ Tải Ảnh Hóa Đơn (.PNG)</button>
+            <button type="button" id="btnPrintBill" class="bill-exp-btn">🖨️ In / Lưu PDF</button>
+            <button type="button" id="btnResetBill" class="bill-exp-btn danger">🔄 Bill Mới</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DELIVERY ORDER MODAL (SHOPEEFOOD-STYLE) ===== -->
+  <div id="deliveryModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deliveryModalTitle">
+    <div class="modal-container ob-modal-box ob-delivery-box">
+      <button id="btnCloseDeliveryModal" class="modal-close-btn" aria-label="Đóng đặt giao hàng">&times;</button>
+      <div id="deliveryModalContent">
+        <!-- Rendered dynamically by order_booking.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TABLE RESERVATION MODAL ===== -->
+  <div id="reservationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reservationModalTitle">
+    <div class="modal-container ob-modal-box ob-reserve-box">
+      <button id="btnCloseReservationModal" class="modal-close-btn" aria-label="Đóng đặt bàn">&times;</button>
+      <div id="reservationModalContent">
+        <!-- Rendered dynamically by order_booking.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ORDERS & RESERVATIONS HUB MODAL ===== -->
+  <div id="ordersHubModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ordersHubTitle">
+    <div class="modal-container ob-modal-box ob-hub-box">
+      <button id="btnCloseOrdersHubModal" class="modal-close-btn" aria-label="Đóng quản lý đơn &amp; đặt bàn">&times;</button>
+      <div class="ob-hub-header">
+        <h2 id="ordersHubTitle">🛵 ĐƠN GIAO HÀNG &amp; LỊCH ĐẶT BÀN</h2>
+        <p>Theo dõi hành trình tài xế giao món tận nơi và quản lý các bàn đã đặt trước tại Hà Nội Phố Vị.</p>
+      </div>
+      <div class="ob-hub-tabs">
+        <button type="button" class="ob-hub-tab active" data-ob-tab="delivery">
+          🛵 Đơn giao hàng <span id="obTabDeliveryCount" class="ob-tab-pill">0</span>
+        </button>
+        <button type="button" class="ob-hub-tab" data-ob-tab="reservations">
+          🪑 Lịch đặt bàn <span id="obTabReserveCount" class="ob-tab-pill">0</span>
+        </button>
+      </div>
+      <div id="ordersHubContent" class="ob-hub-content">
+        <!-- Rendered dynamically by order_booking.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti Canvas for Victory Animation -->
+  <canvas id="confettiCanvas"></canvas>
+
+  <!-- Toast Notification Pill -->
+  <aside id="toastNotice" class="toast-notice" role="alert" aria-live="polite">
+    <span>✨</span> <span>Thông báo</span>
+  </aside>
+
+  <!-- Nostalgic Footer -->
+  <footer class="vintage-footer">
+    <div class="footer-inner">
+      <p class="footer-quote">
+        “Hà Nội có một thứ quà thật đặc biệt, ấy là những thức quà đem lại bao nhiêu cảm giác êm đềm và thanh khiết... Người Hà Nội ăn uống giản dị mà cầu kỳ, mộc mạc mà lắng đọng tinh hoa ngàn năm.”
+      </p>
+      <div class="footer-divider"></div>
+      <p class="footer-copyright">
+        © 2026 <strong>HÀ NỘI PHỐ VỊ</strong> • Tuyển tập 744 nhà hàng & quán ăn kinh kỳ • Dữ liệu tham khảo vị trí từ Google Maps • Thiết kế UI/UX phong cách cổ điển Đông Dương
+      </p>
+    </div>
+  </footer>
+
+  <!-- Floating Back to Top Button -->
+  <button id="btnBackToTop" class="btn-back-to-top" aria-label="Cuộn lên đầu trang">
+    <span>↑</span> <span>Lên đầu trang</span>
+  </button>
+
+  <!-- ===== AI CHAT WIDGET ===== -->
+  <button id="aiBtnOpen" class="ai-chat-trigger" title="Chat với Trợ Lý Ẩm Thực AI" aria-label="Mở chat AI">
+    <span class="ai-trigger-icon">🏮</span>
+    <span class="ai-trigger-label">Trợ Lý AI</span>
+    <span class="ai-trigger-badge" id="aiUnreadBadge" hidden>1</span>
+  </button>
+
+  <div id="aiChatPanel" class="ai-chat-panel" role="dialog" aria-modal="false" aria-label="Trợ lý ẩm thực AI">
+    <div class="ai-chat-header">
+      <div class="ai-chat-header-left">
+        <div class="ai-avatar">🏮</div>
+        <div>
+          <div class="ai-chat-title">Cô Lan — Trợ Lý Ẩm Thực</div>
+          <div class="ai-chat-subtitle" id="aiStatusDot">● Trực tuyến · Trợ lý thông minh</div>
+        </div>
+      </div>
+      <div class="ai-chat-header-right">
+        <button class="ai-btn-icon" id="aiBtnClear" title="Xóa lịch sử">🗑</button>
+        <button class="ai-btn-icon" id="aiBtnSettings" title="Thông tin">ℹ</button>
+        <button class="ai-btn-icon" id="aiBtnClose" title="Đóng">✕</button>
+      </div>
+    </div>
+    <div id="aiMessages" class="ai-messages" role="log" aria-live="polite"></div>
+    <div id="aiChips" class="ai-chips">
+      <button class="ai-chip" data-msg="Hôm nay ăn gì? Chọn giúp tôi!">🎲 Random</button>
+      <button class="ai-chip" data-msg="Gợi ý quán chè và ăn vặt ngon ở Hà Nội?">🍧 Chè & Ăn vặt</button>
+      <button class="ai-chip" data-msg="Quán đồ ăn Hàn Quốc ngon ở Hà Nội?">🇰🇷 Đồ Hàn Quốc</button>
+      <button class="ai-chip" data-msg="Nhà hàng Trung Hoa hoặc Dimsum ngon?">🥟 Trung Hoa & Dimsum</button>
+      <button class="ai-chip" data-msg="Quán ăn sáng ngon ở Hà Nội?">🌅 Ăn sáng</button>
+      <button class="ai-chip" data-msg="Quán ăn ngon ở Hoàn Kiếm?">🏮 Hoàn Kiếm</button>
+      <button class="ai-chip" data-msg="Quán hẹn hò lãng mạn?">💑 Hẹn hò</button>
+      <button class="ai-chip" data-msg="Quán rẻ mà ngon dưới 100k?">💰 Tiết kiệm</button>
+      <button class="ai-chip" data-msg="Phở ngon nhất Hà Nội?">🍜 Phở</button>
+      <button class="ai-chip" data-msg="Ăn khuya ở đâu Hà Nội?">🌙 Khuya</button>
+      <button class="ai-chip" data-msg="Lẩu hoặc nướng ngon ở Hà Nội?">🔥 Lẩu & Nướng</button>
+      <button class="ai-chip" data-msg="Quán ngon khu Tây Hồ?">🌊 Tây Hồ</button>
+      <button class="ai-chip" data-msg="Nhà hàng sang trọng cao cấp Hà Nội?">👑 Cao cấp</button>
+    </div>
+    <div class="ai-input-area">
+      <textarea id="aiTextInput" class="ai-textarea"
+        placeholder="Hỏi cô Lan: Hôm nay ăn gì? Phở ngon ở đâu?..."
+        rows="1" maxlength="300" aria-label="Nhập câu hỏi"></textarea>
+      <button id="aiBtnSend" class="ai-btn-send" title="Gửi"><span>➤</span></button>
+    </div>
+  </div>
+  <!-- ===== END AI CHAT WIDGET ===== -->
+
+  <!-- ===== RẠP CHIẾU PHIM (XEM PHIM TRỰC TUYẾN) ===== -->
+  <div id="moviesModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="moviesModalTitle">
+    <div class="modal-container mv-modal-container">
+      <button class="modal-close-btn" id="btnCloseMoviesModal" aria-label="Đóng">&times;</button>
+
+      <!-- Catalog View -->
+      <div id="moviesCatalogView" class="mv-catalog-view">
+        <div class="mv-header">
+          <div>
+            <h2 id="moviesModalTitle">🍿 RẠP CHIẾU PHIM HÀ NỘI PHỐ VỊ</h2>
+            <p id="moviesCountInfo" class="mv-subtitle">Kho phim chọn lọc Full HD Vietsub &amp; Thuyết Minh · Sạch 100% không quảng cáo cá độ / bóng đá</p>
+          </div>
+          <div class="mv-controls">
+            <input type="text" id="mvSearchInput" class="mv-search" placeholder="Tìm tên phim, thể loại, quốc gia..." />
+            <select id="mvCountryFilter" class="mv-select" aria-label="Lọc theo quốc gia">
+              <option value="Tất cả">🌍 Tất cả quốc gia</option>
+              <option value="Trung Quốc">Trung Quốc</option>
+              <option value="Hàn Quốc">Hàn Quốc</option>
+              <option value="Hoa Kỳ">Hoa Kỳ</option>
+              <option value="Nhật Bản">Nhật Bản</option>
+              <option value="Việt Nam">Việt Nam</option>
+              <option value="Thái Lan">Thái Lan</option>
+              <option value="Pháp">Pháp</option>
+              <option value="Indonesia">Indonesia</option>
+              <option value="Thụy Điển">Thụy Điển</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mv-cat-tabs" role="tablist">
+          <button type="button" class="mv-cat-tab active" data-mv-cat="Tất cả">🎬 Tất Cả</button>
+          <button type="button" class="mv-cat-tab" data-mv-cat="Phim Bộ">📺 Phim Bộ</button>
+          <button type="button" class="mv-cat-tab" data-mv-cat="Phim Chiếu Rạp">🎟️ Phim Chiếu Rạp</button>
+          <button type="button" class="mv-cat-tab" data-mv-cat="Phim Lẻ">🎞️ Phim Lẻ</button>
+          <button type="button" class="mv-cat-tab" data-mv-cat="Hoạt Hình">✨ Hoạt Hình</button>
+          <button type="button" class="mv-cat-tab" data-mv-cat="Đã Lưu">❤️ Phim Đã Lưu</button>
+        </div>
+
+        <div id="moviesGrid" class="mv-grid"></div>
+      </div>
+
+      <!-- Player View -->
+      <div id="moviesPlayerView" class="mv-player-view" hidden>
+        <div class="mv-player-topbar">
+          <button type="button" id="btnMvBackCatalog" class="mv-back-btn">← Quay lại kho phim</button>
+          <div class="mv-player-actions">
+            <a id="btnMvOpenMotchill" class="mv-motchill-btn" href="https://motchill.show" target="_blank" rel="noopener noreferrer">🎬 Xem Bản Full trên MotChill</a>
+            <button type="button" id="btnMvTheaterLights" class="mv-pill-btn">🌙 Tắt đèn rạp</button>
+            <button type="button" id="btnMvPlayerSave" class="mv-pill-btn">🤍 Lưu Phim</button>
+          </div>
+        </div>
+
+        <div class="mv-video-stage">
+          <video id="mvVideoElement" class="mv-video" controls playsinline preload="metadata"></video>
+          <iframe id="mvEmbedFrame" class="mv-embed-frame" allowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer" hidden></iframe>
+          <div id="mvStageStatus" class="mv-stage-status" hidden></div>
+        </div>
+
+        <div class="mv-player-info">
+          <div class="mv-player-head">
+            <div>
+              <h3 id="mvPlayerTitle">Tên Phim</h3>
+              <p id="mvPlayerMeta" class="mv-player-meta"></p>
+            </div>
+            <span id="mvNowPlayingEp" class="mv-now-ep">Full HD</span>
+          </div>
+
+          <div class="mv-server-row">
+            <span>📡 Server phát:</span>
+            <button type="button" class="mv-server-btn active" data-server="Vietsub HD">Server #1 Vietsub HD</button>
+            <button type="button" class="mv-server-btn" data-server="Thuyết Minh">Server #2 Thuyết Minh</button>
+          </div>
+
+          <p id="mvPlayerDesc" class="mv-player-desc"></p>
+
+          <div class="mv-episodes-box">
+            <h4>📑 Danh Sách Tập Phim</h4>
+            <div id="mvEpisodesList" class="mv-episodes-list"></div>
+          </div>
+
+          <div class="mv-comments-box">
+            <h4>💬 Bình Luận Khán Giả</h4>
+            <div class="mv-cmt-form">
+              <input type="text" id="mvCmtInput" maxlength="250" placeholder="Viết cảm nhận của bạn về bộ phim..." />
+              <button type="button" id="btnMvCmtSend">Gửi</button>
+            </div>
+            <div id="mvCommentsList" class="mv-comments-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+  <script src="billsplit.js"></script>
+  <script src="order_booking.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <script src="movies.js"></script>
+</body>
+</html>
