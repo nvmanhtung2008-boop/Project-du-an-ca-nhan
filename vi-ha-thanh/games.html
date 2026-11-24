@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Khu Trò Chơi Phố Cổ - Hà Nội Phố Vị</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('hanoi_phovi_theme_v1') === 'dark' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+        var b = Number(localStorage.getItem('hanoi_phovi_brightness_v1'));
+        if (!isNaN(b) && b >= 60 && b <= 120) {
+          document.documentElement.dataset.brightness = String(Math.round(b));
+        } else {
+          document.documentElement.dataset.brightness = '100';
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <aside class="top-notice-bar" aria-label="Thanh thông tin">
+    <div class="notice-inner">
+      <div>
+        <span>🎮 Khu Trò Chơi Phố Cổ • Giải trí đậm chất Hà Nội</span>
+      </div>
+      <div class="top-bar-controls">
+        <a href="index.html" class="auth-top-btn auth-top-register" style="text-decoration:none;">
+          <span>←</span> <span>Quay lại 2400 Quán Ngon</span>
+        </a>
+        <div id="brightnessControlWrap" class="brightness-control-wrap">
+          <button type="button" id="btnBrightnessControl" class="brightness-toggle-btn" aria-expanded="false" aria-controls="brightnessPopover" title="Chỉnh độ sáng màn hình">
+            <span>🔆</span> <span class="brightness-btn-text">Độ sáng</span> <span id="brightnessBtnBadge" class="brightness-badge">100%</span>
+          </button>
+          <div id="brightnessPopover" class="brightness-popover" role="dialog" aria-label="Điều chỉnh độ sáng màn hình" hidden>
+            <div class="brightness-pop-head">
+              <span>🔆 Độ sáng màn hình</span>
+              <strong id="brightnessValLabel">100%</strong>
+            </div>
+            <input type="range" id="brightnessSlider" class="brightness-slider" min="60" max="120" step="1" value="100" aria-label="Thanh kéo độ sáng" />
+            <div class="brightness-presets">
+              <button type="button" class="brightness-preset-btn" data-brightness-preset="75">75% Dịu</button>
+              <button type="button" class="brightness-preset-btn" data-brightness-preset="90">90% Nhẹ</button>
+              <button type="button" class="brightness-preset-btn active" data-brightness-preset="100">100%</button>
+              <button type="button" class="brightness-preset-btn" data-brightness-preset="115">115% Sáng</button>
+            </div>
+            <button type="button" id="btnResetBrightness" class="brightness-reset-btn">↺ Khôi phục mặc định (100%)</button>
+          </div>
+        </div>
+        <button type="button" id="themeToggleBtn" class="theme-toggle-btn" aria-pressed="false" title="Chuyển giao diện Sáng / Tối">
+          <span>🌙</span> <span>Tối</span>
+        </button>
+        <button id="soundToggleBtn" class="sound-toggle-btn" title="Bật/Tắt hiệu ứng âm thanh">
+          <span>🔔</span> <span>Âm thanh: Bật</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <header class="masthead" style="padding-bottom: 14px;">
+    <div class="masthead-frame">
+      <div class="masthead-top">
+        <span>Hà Nội Phố Vị • Góc Giải Trí 2D</span>
+        <span>7 Trò Chơi Tương Tác</span>
+        <span>Chơi Miễn Phí</span>
+      </div>
+      <div class="masthead-hero" style="margin-bottom: 0;">
+        <div class="title-group">
+          <div class="brand-badge"><span>🏮</span> HỘI CHỢ TRÒ CHƠI PHỐ CỔ</div>
+          <h1 class="site-title" style="font-size: clamp(1.8rem, 4vw, 2.7rem);">PHỐ CỔ TRÒ CHƠI</h1>
+          <p class="site-subtitle">Board Game (Cờ Vua, Cờ Tướng) &amp; Trò Chơi 2D (Hiệp Sĩ Pixel, Hứng Đồ, Rắn Săn Món, Block Blast, Lật Thẻ)</p>
+        </div>
+        <div class="hero-actions">
+          <a href="index.html" class="btn-favorites" style="text-decoration:none;">
+            <span>🏮</span> <span>Về Trang Cẩm Nang Quán Ăn</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main style="padding-top: 8px; padding-bottom: 36px;">
+  <!-- Dedicated Games Section (Khu Trò Chơi Phố Cổ Riêng Biệt) -->
+  <section id="gamesSection" class="games-arcade-section" aria-labelledby="gamesModalTitle">
+    <div class="games-section-container">
+      <div class="games-modal-header">
+        <h2 id="gamesModalTitle">🎮 KHU TRÒ CHƠI PHỐ CỔ</h2>
+        <p>Chọn khu vực Board Game hoặc Trò Chơi 2D — Mỗi trò chơi đều có Bảng Xếp Hạng Đua Top riêng biệt!</p>
+      </div>
+
+      <!-- Categorized Game Selector Tabs -->
+      <div class="games-category-groups" role="tablist">
+        <div class="games-cat-box">
+          <div class="games-cat-title">♟️ BOARD GAME (CỜ TRÍ TUỆ)</div>
+          <div class="games-tabs games-tabs-cat">
+            <button class="games-tab" data-game="chess" role="tab" aria-selected="false">
+              ♟️ Cờ Vua
+            </button>
+            <button class="games-tab" data-game="xiangqi" role="tab" aria-selected="false">
+              🏮 Cờ Tướng
+            </button>
+          </div>
+        </div>
+        <div class="games-cat-box">
+          <div class="games-cat-title">🕹️ TRÒ CHƠI 2D (ARCADE)</div>
+          <div class="games-tabs games-tabs-cat">
+            <button class="games-tab" data-game="dungeon" role="tab" aria-selected="false">
+              ⚔️ Hiệp Sĩ Linh Hồn
+            </button>
+            <button class="games-tab active" data-game="catch" role="tab" aria-selected="true">
+              🥢 Hứng Đặc Sản
+            </button>
+            <button class="games-tab" data-game="snake" role="tab" aria-selected="false">
+              🐉 Rắn Săn Món
+            </button>
+            <button class="games-tab" data-game="blockblast" role="tab" aria-selected="false">
+              🧱 Block Blast
+            </button>
+            <button class="games-tab" data-game="memory" role="tab" aria-selected="false">
+              🃏 Lật Thẻ Món
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAME 1: HỨNG ĐẶC SẢN PHỐ CỔ (2D Canvas Catcher) -->
+      <div id="gamePanelCatch" class="game-panel active">
+        <div class="game-hud">
+          <span>Điểm: <strong id="catchScore">0</strong></span>
+          <span>Combo: <strong id="catchCombo">x1</strong></span>
+          <span>Mạng: <strong id="catchLives">❤️❤️❤️</strong></span>
+          <span>Kỷ lục: <strong id="catchBest">0</strong></span>
+        </div>
+
+        <div class="game-canvas-wrap">
+          <canvas id="catchCanvas" width="520" height="360"></canvas>
+          <div id="catchOverlay" class="game-canvas-overlay">
+            <div class="game-overlay-box">
+              <div class="game-overlay-icon">🥢</div>
+              <h3 id="catchOverlayTitle">Hứng Đặc Sản Phố Cổ</h3>
+              <p id="catchOverlayDesc">Di chuyển chuột / chạm màn hình hoặc bấm phím ⬅️ ➡️ để hứng Phở, Chè, Dimsum, Gà rán. Tránh 🌶️ ớt cay và 🦴 xương cá!</p>
+              <button id="btnStartCatch" class="game-start-btn">▶ Bắt Đầu Chơi</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-tip-row">
+          <span>💡 Hứng 🏮 Đèn lồng (+30đ) • ⭐ Ngôi sao (+50đ) • Tránh 🌶️ 🦴</span>
+        </div>
+      </div>
+
+      <!-- GAME 2: LẬT THẺ MÓN NGON (2D Memory Match) -->
+      <div id="gamePanelMemory" class="game-panel" hidden>
+        <div class="game-hud">
+          <span>Số lượt: <strong id="memMoves">0</strong></span>
+          <span>Đã ghép: <strong id="memMatches">0/8</strong></span>
+          <span>Thời gian: <strong id="memTime">0s</strong></span>
+          <span>Kỷ lục: <strong id="memBest">--</strong></span>
+        </div>
+
+        <div id="memoryGrid" class="memory-grid">
+          <!-- 16 cards generated by JS -->
+        </div>
+
+        <div class="game-action-bar">
+          <button id="btnRestartMemory" class="game-start-btn">🔄 Xáo Bài Chơi Lại</button>
+        </div>
+      </div>
+
+      <!-- GAME 3: RẮN SĂN MÓN NGON (2D Retro Snake) -->
+      <div id="gamePanelSnake" class="game-panel" hidden>
+        <div class="game-hud">
+          <span>Điểm: <strong id="snakeScore">0</strong></span>
+          <span>Độ dài: <strong id="snakeLength">3</strong></span>
+          <span>Kỷ lục: <strong id="snakeBest">0</strong></span>
+        </div>
+
+        <div class="game-canvas-wrap">
+          <canvas id="snakeCanvas" width="400" height="360"></canvas>
+          <div id="snakeOverlay" class="game-canvas-overlay">
+            <div class="game-overlay-box">
+              <div class="game-overlay-icon">🐉</div>
+              <h3 id="snakeOverlayTitle">Rắn Săn Món Ngon 2D</h3>
+              <p id="snakeOverlayDesc">Dùng phím mũi tên / WASD hoặc nút điều hướng bên dưới để dẫn chú Rồng ăn thật nhiều món ngon Hà Nội!</p>
+              <button id="btnStartSnake" class="game-start-btn">▶ Bắt Đầu Chơi</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- On-screen 2D D-Pad for mouse & mobile -->
+        <div class="snake-dpad" aria-label="Điều hướng trò chơi rắn">
+          <button type="button" class="dpad-btn dpad-up" data-dir="up" aria-label="Lên">▲</button>
+          <div class="dpad-mid">
+            <button type="button" class="dpad-btn dpad-left" data-dir="left" aria-label="Trái">◀</button>
+            <button type="button" class="dpad-btn dpad-down" data-dir="down" aria-label="Xuống">▼</button>
+            <button type="button" class="dpad-btn dpad-right" data-dir="right" aria-label="Phải">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAME 4: HIỆP SĨ PIXEL (Soul Knight-inspired 2D Pixel Dungeon Shooter) -->
+      <div id="gamePanelDungeon" class="game-panel" hidden>
+        <div class="sk-hud">
+          <div class="sk-bars">
+            <span class="sk-stat sk-hp">❤️ <strong id="skHp">6/6</strong></span>
+            <span class="sk-stat sk-shield">🛡️ <strong id="skShield">5/5</strong></span>
+            <span class="sk-stat sk-energy">⚡ <strong id="skEnergy">180</strong></span>
+            <span class="sk-stat sk-gem-hud" title="Gem tích lũy">
+              <svg class="sk-gem-svg" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#0c4a6e"/><circle cx="8" cy="8" r="5.8" fill="#38bdf8"/><circle cx="8" cy="8" r="3.6" fill="#0284c7"/><rect x="5" y="4" width="2" height="2" fill="#e0f2fe"/><rect x="4" y="5" width="1" height="2" fill="#ffffff"/></svg>
+              <strong id="skHudGem">500</strong>
+            </span>
+          </div>
+          <div class="sk-meta">
+            <span>Vùng: <strong id="skBiome">🏰 Đá Cổ</strong></span>
+            <span>Tầng: <strong id="skWave">1</strong></span>
+            <span>Điểm: <strong id="skScore">0</strong></span>
+            <span>Kỷ lục: <strong id="skBest">0</strong></span>
+          </div>
+        </div>
+
+        <div class="sk-exp-wrap" aria-label="Thanh kinh nghiệm">
+          <span class="sk-lvl-badge">Cấp <strong id="skLevel">1</strong></span>
+          <div class="sk-exp-track">
+            <div class="sk-exp-fill" id="skExpFill" style="width: 0%;"></div>
+          </div>
+          <span class="sk-exp-text" id="skExpText">0 / 40 EXP</span>
+        </div>
+
+        <div id="skLobbyBar" class="sk-lobby-bar">
+          <span>🕹️ <strong>Phòng Chờ:</strong> Dùng <strong>WASD / Mũi tên</strong> di chuyển • <strong>F / Space</strong> hoặc <strong>Click</strong> vào Tướng / NPC Độ khó / Bảng Nhiệm Vụ / Cổng ⚔️</span>
+          <div class="sk-lobby-badges">
+            <span id="skLobbyHeroBadge" class="sk-lb-badge">Tướng: KNIGHT (Lv.1)</span>
+            <span id="skLobbyDiffBadge" class="sk-lb-badge">Độ khó: Thường</span>
+            <button type="button" id="btnStartDungeon" class="sk-dungeon-gate">⚔️ VÀO HẦM NGỤC</button>
+          </div>
+        </div>
+
+        <div class="game-canvas-wrap sk-canvas-wrap">
+          <canvas id="skCanvas" width="560" height="360"></canvas>
+          <div id="skOverlay" class="game-canvas-overlay sk-living-room" hidden>
+            <!-- Top Bar: Title, Dungeon Entrance Gate, Gems, Difficulty & Task Board -->
+            <div class="sk-lr-topbar">
+              <div class="sk-lr-brand">
+                <img class="sk-lr-logo" src="https://pages.chillyroom.com/GameOfficialWebsite/strapi-cms/20240118_094858_c5583b3394.png" alt="Soul Knight" />
+                <span id="skOverlayTitle">Select a hero</span>
+              </div>
+
+              <!-- Dungeon Entrance Gate (Click to Start Game!) -->
+              <button id="btnStartDungeonAlt" class="sk-dungeon-gate" title="Bước vào Cổng Hầm Ngục để bắt đầu chiến đấu!">
+                <span class="sk-gate-icon">⚔️</span>
+                <span class="sk-gate-text">VÀO HẦM NGỤC</span>
+              </button>
+
+              <div class="sk-lr-right">
+                <span class="sk-gem-pill" title="Gem của bạn (nhặt từ quái & nhiệm vụ)">
+                  <svg class="sk-gem-svg" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#0c4a6e"/><circle cx="8" cy="8" r="5.8" fill="#38bdf8"/><circle cx="8" cy="8" r="3.6" fill="#0284c7"/><rect x="5" y="4" width="2" height="2" fill="#e0f2fe"/><rect x="4" y="5" width="1" height="2" fill="#ffffff"/></svg>
+                  <strong id="skHubGemCount">500</strong>
+                </span>
+                <select id="skDiffSelect" class="sk-lr-select" title="Chọn độ khó">
+                  <option value="normal">Thường</option>
+                  <option value="badass">🔥 Badass (Khó)</option>
+                </select>
+                <button type="button" id="btnOpenSkTasks" class="sk-lr-icon-btn" title="Bảng Nhiệm Vụ & Thử Thách">📜</button>
+              </div>
+            </div>
+
+            <!-- Living Room Floor with Selectable Heroes -->
+            <div class="sk-lr-floor" id="skLivingRoomFloor">
+              <div class="sk-lr-props-top">
+                <span class="sk-lr-prop" title="Máy Gacha">🎰</span>
+                <span class="sk-lr-prop" title="Tủ Lạnh">🧊</span>
+                <span class="sk-lr-prop" title="Két Sắt">🗄️</span>
+                <span class="sk-lr-pet-sit" title="Mèo Chilly">
+                  <img src="https://soulknight.chillyroom.com/_next/static/media/cat.0e4e459f.gif" alt="Chilly" />
+                </span>
+              </div>
+
+              <div class="sk-lr-heroes" id="skHeroPicker">
+                <button type="button" class="sk-lr-hero active" data-hero="knight">
+                  <span class="sk-lr-lv-tag" id="skTagKnight">Lv.1</span>
+                  <img src="https://soulknight.chillyroom.com/_next/static/media/npc.c9c45064.gif" alt="Knight" />
+                  <strong>KNIGHT</strong>
+                </button>
+                <button type="button" class="sk-lr-hero" data-hero="assassin">
+                  <span class="sk-lr-lv-tag" id="skTagAssassin">Lv.1</span>
+                  <img src="https://soulknight.chillyroom.com/_next/static/media/npc_left_1.ec8c58a6.png" alt="Assassin" />
+                  <strong>ASSASSIN</strong>
+                </button>
+                <button type="button" class="sk-lr-hero" data-hero="engineer">
+                  <span class="sk-lr-lv-tag" id="skTagEngineer">Lv.1</span>
+                  <img src="https://soulknight.chillyroom.com/_next/static/media/npc_right_1.77f1de5b.png" alt="Engineer" />
+                  <strong>ENGINEER</strong>
+                </button>
+                <button type="button" class="sk-lr-hero" data-hero="paladin">
+                  <span class="sk-lr-lv-tag" id="skTagPaladin">Lv.1</span>
+                  <img src="https://soulknight.chillyroom.com/_next/static/media/npc_2.7989b52c.gif" alt="Paladin" />
+                  <strong>PALADIN</strong>
+                </button>
+              </div>
+
+              <div class="sk-lr-hint" id="skOverlayDesc">
+                Nhấn vào <strong>Tướng</strong> để xem chỉ số &amp; nâng cấp (Lv.1–10) • Nhấn <strong>🚪 VÀO HẦM NGỤC</strong> phía trên để bắt đầu!
+              </div>
+            </div>
+          </div>
+
+            <!-- Hero Upgrade Panel (Image 2 style) -->
+            <div class="sk-upgrade-panel" id="skHeroUpgradeCard" hidden>
+              <div class="sk-up-header">
+                <button type="button" id="btnSkUpBack" class="sk-up-back">←</button>
+                <h3 id="skUpHeroName">KNIGHT</h3>
+                <span class="sk-gem-pill">
+                  <svg class="sk-gem-svg" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#0c4a6e"/><circle cx="8" cy="8" r="5.8" fill="#38bdf8"/><circle cx="8" cy="8" r="3.6" fill="#0284c7"/><rect x="5" y="4" width="2" height="2" fill="#e0f2fe"/><rect x="4" y="5" width="1" height="2" fill="#ffffff"/></svg>
+                  <strong id="skUpGemCount">500</strong>
+                </span>
+              </div>
+              <div class="sk-up-body">
+                <div class="sk-up-stats">
+                  <div class="sk-up-stat-row"><span>❤️ Máu</span><div class="sk-up-bar"><div id="skUpBarHp" style="background:#ef4444;"></div></div><strong id="skUpValHp">6</strong></div>
+                  <div class="sk-up-stat-row"><span>🛡️ Giáp</span><div class="sk-up-bar"><div id="skUpBarSh" style="background:#94a3b8;"></div></div><strong id="skUpValSh">5</strong></div>
+                  <div class="sk-up-stat-row"><span>⚡ Năng lượng</span><div class="sk-up-bar"><div id="skUpBarEn" style="background:#38bdf8;"></div></div><strong id="skUpValEn">180</strong></div>
+                  <div class="sk-up-stat-row"><span>🎯 Chí mạng</span><div class="sk-up-bar"><div id="skUpBarCr" style="background:#facc15;"></div></div><strong id="skUpValCr">5</strong></div>
+                </div>
+                <div class="sk-up-center">
+                  <img id="skUpHeroImg" src="https://soulknight.chillyroom.com/_next/static/media/npc.c9c45064.gif" alt="Hero" />
+                  <div class="sk-up-stars" id="skUpStars">★☆☆☆☆☆☆☆☆☆</div>
+                  <div class="sk-up-lvl-lbl" id="skUpLvlText">Lv. 1 / 10</div>
+                </div>
+                <div class="sk-up-skill-box">
+                  <div class="sk-up-skill-title" id="skUpSkillName">SONG TRÌ VŨ KHÍ</div>
+                  <p id="skUpSkillDesc">Bắn gấp đôi tia đạn trong 4 giây.</p>
+                  <div class="sk-up-lv5-buff" id="skUpLv5Buff">🔒 Lv.5 Buff: Mở khóa khi đạt cấp 5</div>
+                </div>
+              </div>
+              <div class="sk-up-actions">
+                <button type="button" id="btnSkUpgradeHero" class="sk-up-btn upgrade">⬆️ Nâng Cấp (<span id="skUpCost">100</span> Gem)</button>
+                <button type="button" id="btnSkSelectHero" class="sk-up-btn select">✓ Chọn Tướng &amp; Đóng</button>
+              </div>
+            </div>
+
+            <!-- Task / Challenge Board Panel -->
+            <div class="sk-task-panel" id="skTaskPanel" hidden>
+              <div class="sk-up-header">
+                <button type="button" id="btnSkTaskBack" class="sk-up-back">←</button>
+                <h3>📜 BẢNG NHIỆM VỤ &amp; THỬ THÁCH</h3>
+                <span></span>
+              </div>
+              <div class="sk-task-grid">
+                <div class="sk-task-col">
+                  <h4>⚡ Chọn Thử Thách Hầm Ngục</h4>
+                  <label class="sk-chal-opt"><input type="radio" name="skChal" value="none" checked /> <span>Bình thường (Không ràng buộc)</span></label>
+                  <label class="sk-chal-opt"><input type="radio" name="skChal" value="no_shield" /> <span>💔 Không Hồi Giáp (+50% Gem)</span></label>
+                  <label class="sk-chal-opt"><input type="radio" name="skChal" value="fast_foes" /> <span>⚡ Quái Tăng Tốc (+40% Gem)</span></label>
+                  <label class="sk-chal-opt"><input type="radio" name="skChal" value="melee_only" /> <span>⚔️ Chỉ Cận Chiến (+60% Gem)</span></label>
+                </div>
+                <div class="sk-task-col">
+                  <h4>🏆 Nhiệm Vụ Nhận Gem</h4>
+                  <div id="skBountiesList" class="sk-bounties-list"></div>
+                </div>
+              </div>
+            </div>
+
+          <!-- Level-Up Buff Selection Overlay (Soul Knight style) -->
+          <div id="skLevelUpOverlay" class="game-canvas-overlay sk-levelup-overlay" hidden>
+            <div class="sk-levelup-box">
+              <div class="sk-levelup-header">
+                <span class="sk-levelup-badge">✨ LÊN CẤP <strong id="skNewLevelNum">2</strong> ✨</span>
+                <h3>Chọn 1 Kỹ Năng Nâng Cấp</h3>
+              </div>
+              <div id="skSkillCards" class="sk-skill-cards">
+                <!-- 3 upgrade cards rendered dynamically by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sk-toolbar">
+          <div class="sk-weapons" role="group" aria-label="Chọn vũ khí">
+            <button type="button" class="sk-wpn-btn active" data-wpn="0">
+              <svg class="sk-wpn-svg" viewBox="0 0 24 14" aria-hidden="true"><rect x="1" y="5" width="4" height="5" fill="#1e293b"/><rect x="5" y="4" width="12" height="5" fill="#ea580c"/><rect x="7" y="1" width="6" height="3" fill="#334155"/><rect x="17" y="5" width="6" height="3" fill="#475569"/><rect x="11" y="9" width="3" height="5" fill="#0f172a"/></svg>
+              <span>Súng Máy (1⚡)</span>
+            </button>
+            <button type="button" class="sk-wpn-btn" data-wpn="1">
+              <svg class="sk-wpn-svg" viewBox="0 0 24 14" aria-hidden="true"><rect x="1" y="6" width="14" height="2" fill="#92400e"/><rect x="14" y="4" width="3" height="6" fill="#f59e0b"/><circle cx="19" cy="7" r="4" fill="#38bdf8"/><circle cx="18" cy="6" r="1.4" fill="#e0f2fe"/></svg>
+              <span>Gậy Phép (3⚡)</span>
+            </button>
+            <button type="button" class="sk-wpn-btn" data-wpn="2">
+              <svg class="sk-wpn-svg" viewBox="0 0 24 14" aria-hidden="true"><rect x="1" y="5" width="4" height="4" fill="#334155"/><rect x="5" y="2" width="2" height="10" fill="#475569"/><path d="M7 4h12l4 3-4 3H7z" fill="#dc2626"/><rect x="8" y="6" width="10" height="2" fill="#1e293b"/></svg>
+              <span>Kiếm Răng Cưa (0⚡)</span>
+            </button>
+          </div>
+          <div class="sk-skills">
+            <button type="button" id="btnSkFire" class="sk-act-btn">💥 Bắn</button>
+            <button type="button" id="btnSkUlt" class="sk-act-btn sk-ult-btn">🔥 Chiêu (R)</button>
+            <button type="button" id="btnSkDash" class="sk-act-btn sk-dash-btn">💨 Lướt (Shift)</button>
+          </div>
+        </div>
+
+        <div class="sk-active-buffs" id="skActiveBuffs">
+          <span class="sk-buff-empty">💎 Nhặt ngọc EXP từ quái để lên cấp &amp; mở khóa 18 kỹ năng nguyên tố &amp; buff đặc biệt! Cứ 10 tầng mở Cánh Cổng sang Vùng Mới!</span>
+        </div>
+      </div>
+
+      <!-- GAME 5: XẾP KHỐI BLOCK BLAST (8x8 Puzzle) -->
+      <div id="gamePanelBlockBlast" class="game-panel" hidden>
+        <div class="game-hud">
+          <span>Điểm: <strong id="bbScore">0</strong></span>
+          <span>Combo: <strong id="bbCombo">x0</strong></span>
+          <span>Dòng đã xóa: <strong id="bbLines">0</strong></span>
+          <span>Kỷ lục: <strong id="bbBest">0</strong></span>
+        </div>
+
+        <div class="bb-stage">
+          <div id="bbBoardWrap" class="bb-board-wrap">
+            <div id="bbBoard" class="bb-board" aria-label="Bảng xếp khối 8x8"></div>
+            <div id="bbOverlay" class="game-canvas-overlay" hidden>
+              <div class="game-overlay-box">
+                <div class="game-overlay-icon">🧱</div>
+                <h3 id="bbOverlayTitle">Hết Nước Đi!</h3>
+                <p id="bbOverlayDesc">Điểm của bạn: 0</p>
+                <button id="btnRestartBB" class="game-start-btn">🔄 Chơi Lại</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bb-tray-label">👉 Bấm chọn khối (hoặc kéo thả) rồi đặt vào bảng 8×8 bên trên:</div>
+          <div id="bbTray" class="bb-tray" aria-label="Khay 3 khối gạch"></div>
+        </div>
+
+        <div class="game-action-bar">
+          <button id="btnNewGameBB" class="game-start-btn">🔄 Ván Mới</button>
+        </div>
+      </div>
+
+      <!-- GAME 6: CỜ VUA (CHESS — Người vs Bot IQ hoặc Người vs Người) -->
+      <div id="gamePanelChess" class="game-panel" hidden>
+        <div class="board-controls-bar">
+          <div class="board-control-group">
+            <label for="chessModeSelect">Chế độ:</label>
+            <select id="chessModeSelect">
+              <option value="bot">🤖 Người vs Bot</option>
+              <option value="pvp">👥 Người vs Người (2 người)</option>
+            </select>
+          </div>
+          <div class="board-control-group" id="chessIqWrap">
+            <label for="chessIqSelect">IQ Bot:</label>
+            <select id="chessIqSelect">
+              <option value="70">IQ 70 (Dễ - Tập chơi)</option>
+              <option value="100" selected>IQ 100 (Trung bình)</option>
+              <option value="130">IQ 130 (Khá thông minh)</option>
+              <option value="160">IQ 160 (Cao thủ)</option>
+            </select>
+          </div>
+          <div class="board-control-btns">
+            <button type="button" id="btnChessUndo" class="board-mini-btn">↩️ Đi lại</button>
+            <button type="button" id="btnChessNew" class="board-mini-btn board-mini-primary">🔄 Ván mới</button>
+          </div>
+        </div>
+
+        <div id="chessStatus" class="board-status-banner">⬜ Lượt Trắng đi trước</div>
+
+        <div class="chess-board-wrap">
+          <div id="chessBoard" class="chess-board" aria-label="Bàn cờ vua 8x8"></div>
+        </div>
+      </div>
+
+      <!-- GAME 7: CỜ TƯỚNG (XIANGQI — Người vs Bot IQ hoặc Người vs Người) -->
+      <div id="gamePanelXiangqi" class="game-panel" hidden>
+        <div class="board-controls-bar">
+          <div class="board-control-group">
+            <label for="xqModeSelect">Chế độ:</label>
+            <select id="xqModeSelect">
+              <option value="bot">🤖 Người vs Bot</option>
+              <option value="pvp">👥 Người vs Người (2 người)</option>
+            </select>
+          </div>
+          <div class="board-control-group" id="xqIqWrap">
+            <label for="xqIqSelect">IQ Bot:</label>
+            <select id="xqIqSelect">
+              <option value="70">IQ 70 (Dễ - Tập chơi)</option>
+              <option value="100" selected>IQ 100 (Trung bình)</option>
+              <option value="130">IQ 130 (Khá thông minh)</option>
+              <option value="160">IQ 160 (Cao thủ)</option>
+            </select>
+          </div>
+          <div class="board-control-btns">
+            <button type="button" id="btnXqUndo" class="board-mini-btn">↩️ Đi lại</button>
+            <button type="button" id="btnXqNew" class="board-mini-btn board-mini-primary">🔄 Ván mới</button>
+          </div>
+        </div>
+
+        <div id="xqStatus" class="board-status-banner">🔴 Lượt Quân Đỏ đi trước</div>
+
+        <div class="xq-board-wrap">
+          <canvas id="xqCanvas" width="460" height="510"></canvas>
+        </div>
+      </div>
+
+      <!-- BẢNG XẾP HẠNG ĐUA TOP RIÊNG BIỆT CHO TỪNG TRÒ CHƠI -->
+      <div class="game-leaderboard-box" id="gameLeaderboardBox">
+        <div class="lb-header">
+          <div>
+            <h3 id="lbTitle">🏆 ĐUA TOP — HỨNG ĐẶC SẢN PHỐ CỔ</h3>
+            <p id="lbSub">Bảng xếp hạng riêng của trò chơi hiện tại • Chơi hết lượt để tự động ghi danh!</p>
+          </div>
+          <span class="lb-player-pill" id="lbCurrentPlayer">👤 Bạn</span>
+        </div>
+        <div id="lbList" class="lb-list"></div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <footer class="vintage-footer">
+    <div class="footer-inner">
+      <p class="footer-copyright">
+        © 2026 <strong>HÀ NỘI PHỐ VỊ</strong> • Khu Trò Chơi Phố Cổ • <a href="index.html" style="color:var(--color-lacquer);font-weight:700;">Quay lại Cẩm Nang Quán Ngon</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="theme.js"></script>
+  <script src="soulknight_hub.js"></script>
+  <script src="games.js"></script>
+  <script src="boardgames.js"></script>
+</body>
+</html>
