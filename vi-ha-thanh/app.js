@@ -13,13 +13,567 @@
     peopleCategory: 'all',
     district: 'all',
     occasion: 'all',
-    quickFilter: 'all', // 'all' | 'michelin' | 'hadong' | 'favorites'
+    quickFilter: 'all', // 'all' | 'open_now' | 'michelin' | 'hadong' | 'reservable' | 'favorites'
+    timeSlot: 'now',    // 'now' | 'HH:MM' | 'custom'
+    customTime: '19:00',
     sortBy: 'rating_desc',
     currentPage: 1,
     pageSize: 9, // 9 quán mỗi trang (chia nhỏ trang, chống cuộn sâu)
     favorites: new Set(),
     soundEnabled: true,
     isClawing: false
+  };
+
+  // --- OPENING HOURS ENGINE & FILTER STATE API ---
+  const HOURS_PARSE_CACHE = {};
+  const PRICE_TIER_ORDER = ['budget', 'moderate', 'upscale', 'luxury'];
+  const DISH_STOP_WORDS = {
+    mon: 1, an: 1, cua: 1, va: 1, voi: 1, cho: 1, tai: 1, cac: 1, nhung: 1,
+    dac: 1, biet: 1, truyen: 1, thong: 1, ha: 1, noi: 1, quan: 1, nha: 1,
+    hang: 1, nuoc: 1, dung: 1, gion: 1, ngon: 1, thom: 1, nong: 1, sot: 1,
+    cham: 1, kem: 1, bo: 1, ga: 1, thit: 1, rau: 1, song: 1, tuoi: 1
+  };
+
+  function parseTimeStringToMinutes(hhmm) {
+    if (typeof hhmm !== 'string') return null;
+    const m = hhmm.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    const hh = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10);
+    if (isNaN(hh) || isNaN(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+    return hh * 60 + mm;
+  }
+
+  function formatMinutesToHHMM(mins) {
+    if (typeof mins !== 'number' || isNaN(mins)) return '00:00';
+    const normMins = ((Math.floor(mins) % 1440) + 1440) % 1440;
+    const hh = Math.floor(normMins / 60);
+    const mm = normMins % 60;
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  function extractClosedDaysFromHours(rawStr) {
+    const closed = [];
+    const addDay = (d) => {
+      if (closed.indexOf(d) === -1) closed.push(d);
+    };
+    const normStr = normalizeVi(rawStr);
+    const clauses = [];
+    const parenRx = /\(([^)]+)\)/g;
+    let pm;
+    while ((pm = parenRx.exec(normStr)) !== null) {
+      if (/\b(nghi|dong cua|off)\b/.test(pm[1])) clauses.push(pm[1]);
+    }
+    if (!clauses.length && /\b(nghi|dong cua)\b/.test(normStr)) {
+      clauses.push(normStr);
+    }
+    clauses.forEach((cl) => {
+      if (/\b(chu nhat|cn)\b/.test(cl)) addDay(0);
+      if (/\b(thu\s*2|t2)\b/.test(cl)) addDay(1);
+      if (/\b(thu\s*3|t3)\b/.test(cl)) addDay(2);
+      if (/\b(thu\s*4|t4)\b/.test(cl)) addDay(3);
+      if (/\b(thu\s*5|t5)\b/.test(cl)) addDay(4);
+      if (/\b(thu\s*6|t6)\b/.test(cl)) addDay(5);
+      if (/\b(thu\s*7|t7)\b/.test(cl)) addDay(6);
+    });
+    closed.sort((a, b) => a - b);
+    return closed;
+  }
+
+  function parseOpeningHours(hoursStr) {
+    const raw = String(hoursStr || '').trim() || '07:00 - 22:00';
+    if (HOURS_PARSE_CACHE[raw]) {
+      const cached = HOURS_PARSE_CACHE[raw];
+      return {
+        is24h: cached.is24h,
+        closedDays: cached.closedDays.slice(),
+        ranges: cached.ranges.map((r) => ({ startMin: r.startMin, endMin: r.endMin }))
+      };
+    }
+
+    const closedDays = extractClosedDaysFromHours(raw);
+    const normRaw = normalizeVi(raw);
+
+    if (/24\s*\/\s*24|24\s*\/\s*7|24\s*gio/.test(normRaw)) {
+      const res24 = { is24h: true, closedDays, ranges: [{ startMin: 0, endMin: 1440 }] };
+      HOURS_PARSE_CACHE[raw] = res24;
+      return {
+        is24h: true,
+        closedDays: closedDays.slice(),
+        ranges: [{ startMin: 0, endMin: 1440 }]
+      };
+    }
+
+    const cleaned = raw.replace(/\([^)]*\)/g, ' ');
+    const segments = cleaned.split(/[&,;]+/);
+    const ranges = [];
+
+    segments.forEach((seg) => {
+      const m = seg.match(/(\d{1,2}:\d{2})\s*[-–—~]+\s*(\d{1,2}:\d{2})/);
+      if (!m) return;
+      const startToken = m[1].trim();
+      const endToken = m[2].trim();
+      const startMin = startToken === '24:00' ? 0 : parseTimeStringToMinutes(startToken);
+      let endMin = (endToken === '24:00' || endToken === '00:00') ? 1440 : parseTimeStringToMinutes(endToken);
+      if (startMin === null || endMin === null) return;
+      if (endMin === startMin) {
+        endMin = startMin + 1440;
+      } else if (endMin < startMin) {
+        endMin += 1440;
+      }
+      ranges.push({ startMin, endMin });
+    });
+
+    if (ranges.length === 0) {
+      ranges.push({ startMin: 7 * 60, endMin: 22 * 60 });
+    }
+
+    const is24h = ranges.some((r) => r.startMin === 0 && r.endMin >= 1440);
+    const result = { is24h, closedDays, ranges };
+    HOURS_PARSE_CACHE[raw] = result;
+
+    return {
+      is24h: result.is24h,
+      closedDays: result.closedDays.slice(),
+      ranges: result.ranges.map((r) => ({ startMin: r.startMin, endMin: r.endMin }))
+    };
+  }
+
+  function isOpenAtMinutes(restaurant, targetMinutes, targetDayOfWeek) {
+    if (!restaurant) return false;
+    const now = new Date();
+    const mins = (typeof targetMinutes === 'number' && !isNaN(targetMinutes))
+      ? ((Math.floor(targetMinutes) % 1440) + 1440) % 1440
+      : (now.getHours() * 60 + now.getMinutes());
+    const day = (typeof targetDayOfWeek === 'number' && !isNaN(targetDayOfWeek) && targetDayOfWeek >= 0 && targetDayOfWeek <= 6)
+      ? Math.floor(targetDayOfWeek)
+      : now.getDay();
+
+    const parsed = parseOpeningHours(restaurant.openingHours || restaurant.openHours || '07:00 - 22:00');
+    const todayClosed = parsed.closedDays.indexOf(day) !== -1;
+
+    if (!todayClosed) {
+      if (parsed.is24h) return true;
+      for (let i = 0; i < parsed.ranges.length; i++) {
+        const r = parsed.ranges[i];
+        if (mins >= r.startMin && mins < r.endMin) return true;
+      }
+    }
+
+    const prevDay = (day + 6) % 7;
+    const prevClosed = parsed.closedDays.indexOf(prevDay) !== -1;
+    if (!prevClosed) {
+      const shiftedMins = mins + 1440;
+      for (let j = 0; j < parsed.ranges.length; j++) {
+        const rPrev = parsed.ranges[j];
+        if (rPrev.endMin > 1440 && shiftedMins >= rPrev.startMin && shiftedMins < rPrev.endMin) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  function isOpenAtTimeString(restaurant, hhmm, dateObj) {
+    const mins = parseTimeStringToMinutes(hhmm);
+    if (mins === null) return false;
+    const dt = (dateObj instanceof Date && !isNaN(dateObj.getTime())) ? dateObj : new Date();
+    return isOpenAtMinutes(restaurant, mins, dt.getDay());
+  }
+
+  function getSelectedTimeContext() {
+    const selectEl = document.getElementById('timeSlotSelect');
+    const customEl = document.getElementById('customTimeInput');
+    const rawValue = (selectEl && selectEl.value) ? selectEl.value : (state.timeSlot || 'now');
+    const now = new Date();
+
+    if (rawValue === 'now') {
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      return {
+        mode: 'now',
+        minutes: nowMins,
+        timeLabel: formatMinutesToHHMM(nowMins),
+        dayOfWeek: now.getDay(),
+        rawValue: 'now'
+      };
+    }
+
+    if (rawValue === 'custom') {
+      const customRaw = (customEl && customEl.value) ? customEl.value : (state.customTime || '19:00');
+      let customMins = parseTimeStringToMinutes(customRaw);
+      if (customMins === null) customMins = 19 * 60;
+      const formatted = formatMinutesToHHMM(customMins);
+      return {
+        mode: 'slot',
+        minutes: customMins,
+        timeLabel: formatted,
+        dayOfWeek: now.getDay(),
+        rawValue: formatted
+      };
+    }
+
+    const slotMins = parseTimeStringToMinutes(rawValue);
+    if (slotMins === null) {
+      const fallbackMins = now.getHours() * 60 + now.getMinutes();
+      return {
+        mode: 'now',
+        minutes: fallbackMins,
+        timeLabel: formatMinutesToHHMM(fallbackMins),
+        dayOfWeek: now.getDay(),
+        rawValue: 'now'
+      };
+    }
+
+    return {
+      mode: 'slot',
+      minutes: slotMins,
+      timeLabel: formatMinutesToHHMM(slotMins),
+      dayOfWeek: now.getDay(),
+      rawValue: rawValue
+    };
+  }
+
+  function getFilterStateSnapshot() {
+    return {
+      search: state.search || '',
+      priceTier: state.priceTier || 'all',
+      peopleCategory: state.peopleCategory || 'all',
+      district: state.district || 'all',
+      occasion: state.occasion || 'all',
+      quickFilter: state.quickFilter || 'all',
+      timeSlot: state.timeSlot || 'now',
+      customTime: state.customTime || '19:00',
+      sortBy: state.sortBy || 'rating_desc'
+    };
+  }
+
+  function hasActiveFilters(filterState) {
+    const fs = filterState || getFilterStateSnapshot();
+    return Boolean(
+      (fs.search && String(fs.search).trim()) ||
+      (fs.priceTier && fs.priceTier !== 'all') ||
+      (fs.peopleCategory && fs.peopleCategory !== 'all') ||
+      (fs.district && fs.district !== 'all') ||
+      (fs.occasion && fs.occasion !== 'all') ||
+      (fs.quickFilter && fs.quickFilter !== 'all')
+    );
+  }
+
+  function getActiveFilterSummary(filterState) {
+    const fs = filterState || getFilterStateSnapshot();
+    const parts = [];
+    if (fs.district && fs.district !== 'all') parts.push('Quận ' + fs.district);
+    if (fs.priceTier && fs.priceTier !== 'all') {
+      const tierMap = {
+        budget: 'Bình dân (< 50k)',
+        moderate: 'Phổ thông (50k - 150k)',
+        upscale: 'Tầm trung (150k - 350k)',
+        luxury: 'Sang trọng (> 350k)'
+      };
+      parts.push(tierMap[fs.priceTier] || fs.priceTier);
+    }
+    if (fs.peopleCategory && fs.peopleCategory !== 'all') {
+      const pplMap = {
+        solo: '1 người',
+        couple: '2 người',
+        group: '3 - 5 người',
+        party: '6 - 10+ người'
+      };
+      parts.push(pplMap[fs.peopleCategory] || fs.peopleCategory);
+    }
+    if (fs.occasion && fs.occasion !== 'all') {
+      const occMap = {
+        breakfast: 'Ăn sáng',
+        quick_lunch: 'Bữa trưa',
+        date: 'Hẹn hò',
+        friends: 'Bạn bè / Nhậu',
+        family: 'Gia đình',
+        business: 'Tiếp khách',
+        night_snack: 'Ăn đêm'
+      };
+      parts.push(occMap[fs.occasion] || fs.occasion);
+    }
+    if (fs.quickFilter && fs.quickFilter !== 'all') {
+      const qfMap = {
+        open_now: 'Chỉ quán đang mở',
+        hadong: 'Quán ngon Hà Đông',
+        michelin: 'Đạt giải Michelin',
+        reservable: 'Có đặt bàn trước',
+        favorites: 'Quán đã lưu'
+      };
+      parts.push(qfMap[fs.quickFilter] || fs.quickFilter);
+    }
+    if (fs.search && String(fs.search).trim()) {
+      parts.push('Từ khóa "' + String(fs.search).trim() + '"');
+    }
+    return parts.join(' • ');
+  }
+
+  function itemMatchesSearch(item, rawSearch) {
+    const rawQuery = String(rawSearch || '').trim().toLowerCase();
+    if (!rawQuery) return true;
+    const normQuery = normalizeVi(rawQuery);
+    const badges = Array.isArray(item.specialBadges) ? item.specialBadges : [];
+    const dishes = Array.isArray(item.signatureDishes) ? item.signatureDishes : [];
+    const matchField = (val) => {
+      const s = String(val || '');
+      return s.toLowerCase().includes(rawQuery) || (normQuery && normalizeVi(s).includes(normQuery));
+    };
+    return (
+      matchField(item.name) ||
+      matchField(item.subname) ||
+      matchField(item.category) ||
+      matchField(item.district) ||
+      matchField(item.address) ||
+      dishes.some(matchField) ||
+      badges.some(matchField)
+    );
+  }
+
+  function itemMatchesFilterFacets(item, fs, opts) {
+    const cfg = opts || {};
+    const badges = Array.isArray(item.specialBadges) ? item.specialBadges : [];
+    const peopleCats = Array.isArray(item.peopleCategory) ? item.peopleCategory : [];
+    const occasions = Array.isArray(item.occasions) ? item.occasions : [];
+
+    if (!cfg.ignoreSearch && fs.search && String(fs.search).trim()) {
+      if (!itemMatchesSearch(item, fs.search)) return false;
+    }
+    if (!cfg.ignorePrice && fs.priceTier && fs.priceTier !== 'all' && item.priceTier !== fs.priceTier) {
+      return false;
+    }
+    if (!cfg.ignorePeople && fs.peopleCategory && fs.peopleCategory !== 'all') {
+      if (!peopleCats.includes(fs.peopleCategory)) return false;
+    }
+    if (!cfg.ignoreDistrict && fs.district && fs.district !== 'all' && item.district !== fs.district) {
+      return false;
+    }
+    if (!cfg.ignoreOccasion && fs.occasion && fs.occasion !== 'all') {
+      if (!occasions.includes(fs.occasion)) return false;
+    }
+    if (!cfg.ignoreQuick && fs.quickFilter && fs.quickFilter !== 'all') {
+      if (fs.quickFilter === 'michelin') {
+        if (!badges.some((b) => String(b).toLowerCase().includes('michelin'))) return false;
+      } else if (fs.quickFilter === 'hadong') {
+        if (item.district !== 'Hà Đông') return false;
+      } else if (fs.quickFilter === 'reservable') {
+        if (!window.HNOrderBooking || !window.HNOrderBooking.canReserve(item)) return false;
+      } else if (fs.quickFilter === 'favorites') {
+        if (!state.favorites.has(item.id)) return false;
+      }
+    }
+    return true;
+  }
+
+  function extractDishTokens(restaurant) {
+    const tokens = [];
+    const sources = []
+      .concat(Array.isArray(restaurant.signatureDishes) ? restaurant.signatureDishes : [])
+      .concat(restaurant.category ? [restaurant.category] : []);
+    sources.forEach((text) => {
+      normalizeVi(text).split(/[^a-z0-9]+/).forEach((tok) => {
+        if (tok.length >= 2 && !DISH_STOP_WORDS[tok] && tokens.indexOf(tok) === -1) {
+          tokens.push(tok);
+        }
+      });
+    });
+    return tokens;
+  }
+
+  function computeSimilarityEntry(target, candidate) {
+    let score = 0;
+    const reasons = [];
+
+    if (target.category && candidate.category === target.category) {
+      score += 40;
+      reasons.push('Cùng loại: ' + candidate.category);
+    }
+
+    const tTokens = extractDishTokens(target);
+    const cTokens = extractDishTokens(candidate);
+    let sharedDishCount = 0;
+    tTokens.forEach((tok) => {
+      if (cTokens.indexOf(tok) !== -1) sharedDishCount++;
+    });
+    if (sharedDishCount > 0) {
+      score += Math.min(24, sharedDishCount * 8);
+      if (reasons.length < 3) reasons.push('Món tương đồng');
+    }
+
+    if (target.district && candidate.district === target.district) {
+      score += 20;
+      reasons.push('Cùng quận ' + candidate.district);
+    }
+
+    const tPriceIdx = PRICE_TIER_ORDER.indexOf(target.priceTier);
+    const cPriceIdx = PRICE_TIER_ORDER.indexOf(candidate.priceTier);
+    if (tPriceIdx !== -1 && cPriceIdx !== -1) {
+      const diff = Math.abs(tPriceIdx - cPriceIdx);
+      if (diff === 0) {
+        score += 16;
+        reasons.push('Cùng tầm giá');
+      } else if (diff === 1) {
+        score += 8;
+      }
+    }
+
+    const tOcc = Array.isArray(target.occasions) ? target.occasions : [];
+    const cOcc = Array.isArray(candidate.occasions) ? candidate.occasions : [];
+    let sharedOcc = 0;
+    tOcc.forEach((o) => {
+      if (cOcc.indexOf(o) !== -1) sharedOcc++;
+    });
+    if (sharedOcc > 0) {
+      score += Math.min(18, sharedOcc * 6);
+    }
+
+    const tPpl = Array.isArray(target.peopleCategory) ? target.peopleCategory : [];
+    const cPpl = Array.isArray(candidate.peopleCategory) ? candidate.peopleCategory : [];
+    let sharedPpl = 0;
+    tPpl.forEach((p) => {
+      if (cPpl.indexOf(p) !== -1) sharedPpl++;
+    });
+    if (sharedPpl > 0) {
+      score += Math.min(8, sharedPpl * 4);
+    }
+
+    const rating = Number(candidate.rating) || 0;
+    const reviews = Number(candidate.reviews) || 0;
+    score += rating * 3 + Math.min(5, Math.log10(reviews + 1) * 1.5);
+
+    if (reasons.length === 0 && candidate.district) {
+      reasons.push('Quận ' + candidate.district);
+    }
+
+    return {
+      restaurant: candidate,
+      score: Math.round(score),
+      reasons: reasons.slice(0, 3)
+    };
+  }
+
+  function findSimilarOpenRestaurants(targetRestaurant, options) {
+    const opts = options || {};
+    const allData = (typeof RESTAURANTS_DATA !== 'undefined' && Array.isArray(RESTAURANTS_DATA)) ? RESTAURANTS_DATA : [];
+    const target = (typeof targetRestaurant === 'number' || typeof targetRestaurant === 'string')
+      ? allData.find((r) => r.id === Number(targetRestaurant))
+      : targetRestaurant;
+
+    const ctx = getSelectedTimeContext();
+    const targetMinutes = (typeof opts.targetMinutes === 'number' && !isNaN(opts.targetMinutes))
+      ? ((Math.floor(opts.targetMinutes) % 1440) + 1440) % 1440
+      : ctx.minutes;
+    const targetDayOfWeek = (typeof opts.targetDayOfWeek === 'number' && !isNaN(opts.targetDayOfWeek))
+      ? Math.floor(opts.targetDayOfWeek)
+      : ctx.dayOfWeek;
+    const checkedTimeLabel = opts.timeLabel || formatMinutesToHHMM(targetMinutes);
+    const limit = (typeof opts.limit === 'number' && opts.limit > 0) ? Math.floor(opts.limit) : 6;
+    const requireReservable = Boolean(opts.requireReservable);
+    const fs = opts.filterState ? Object.assign({}, getFilterStateSnapshot(), opts.filterState) : getFilterStateSnapshot();
+    const filtersActive = hasActiveFilters(fs);
+    const activeFilterSummary = getActiveFilterSummary(fs);
+
+    if (!target) {
+      return {
+        items: [],
+        matchedActiveFilters: !filtersActive,
+        hasActiveFilters: filtersActive,
+        activeFilterSummary,
+        checkedTimeLabel,
+        relaxedReason: ''
+      };
+    }
+
+    // Hard invariant pool: never target itself, MUST be open at targetMinutes/day, and reservable if requested
+    const baseOpenPool = allData.filter((item) => {
+      if (!item || item.id === target.id) return false;
+      if (!isOpenAtMinutes(item, targetMinutes, targetDayOfWeek)) return false;
+      if (requireReservable && (!window.HNOrderBooking || !window.HNOrderBooking.canReserve(item))) return false;
+      return true;
+    });
+
+    let candidatePool = [];
+    let matchedActiveFilters = true;
+    let relaxedReason = '';
+
+    if (!filtersActive) {
+      candidatePool = baseOpenPool;
+    } else {
+      candidatePool = baseOpenPool.filter((item) => itemMatchesFilterFacets(item, fs, {}));
+
+      // Smart-ignore target-name search if user searched specifically for the closed restaurant
+      if (candidatePool.length === 0 && fs.search && String(fs.search).trim()) {
+        const normSearch = normalizeVi(fs.search);
+        const normTargetName = normalizeVi(target.name);
+        const normTargetSub = normalizeVi(target.subname);
+        const searchTokens = normSearch.split(/\s+/).filter(Boolean);
+        const targetMatchesTokens = searchTokens.length > 0 && searchTokens.every((t) => normTargetName.includes(t) || normTargetSub.includes(t));
+        if (itemMatchesSearch(target, fs.search) || targetMatchesTokens) {
+          const withoutTargetSearch = baseOpenPool.filter((item) => itemMatchesFilterFacets(item, fs, { ignoreSearch: true }));
+          if (withoutTargetSearch.length > 0) {
+            candidatePool = withoutTargetSearch;
+            const otherActive = hasActiveFilters(Object.assign({}, fs, { search: '' }));
+            if (otherActive) {
+              matchedActiveFilters = true;
+            }
+          }
+        }
+      }
+
+      if (candidatePool.length === 0) {
+        matchedActiveFilters = false;
+        const stages = [
+          { opts: { ignoreSearch: true, ignoreOccasion: true, ignorePeople: true }, note: 'dịp ăn & số người' },
+          { opts: { ignoreSearch: true, ignoreOccasion: true, ignorePeople: true, ignorePrice: true }, note: 'mức giá, dịp ăn & số người' },
+          { opts: { ignoreSearch: true, ignoreOccasion: true, ignorePeople: true, ignorePrice: true, ignoreDistrict: true }, note: 'quận & tiêu chí phụ' },
+          { opts: { ignoreSearch: true, ignoreOccasion: true, ignorePeople: true, ignorePrice: true, ignoreDistrict: true, ignoreQuick: true }, note: 'toàn bộ bộ lọc để giữ quán đang mở' }
+        ];
+        for (let sIdx = 0; sIdx < stages.length; sIdx++) {
+          const fallbackPool = baseOpenPool.filter((item) => itemMatchesFilterFacets(item, fs, stages[sIdx].opts));
+          if (fallbackPool.length > 0) {
+            candidatePool = fallbackPool;
+            relaxedReason = 'Không có quán đang mở lúc ' + checkedTimeLabel + ' khớp toàn bộ (' + activeFilterSummary + '), đã nới lỏng ' + stages[sIdx].note + '.';
+            break;
+          }
+        }
+      }
+    }
+
+    const ranked = candidatePool
+      .map((item) => computeSimilarityEntry(target, item))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const rDiff = (Number(b.restaurant.rating) || 0) - (Number(a.restaurant.rating) || 0);
+        if (rDiff !== 0) return rDiff;
+        return (Number(b.restaurant.reviews) || 0) - (Number(a.restaurant.reviews) || 0);
+      })
+      .slice(0, limit);
+
+    return {
+      items: ranked,
+      matchedActiveFilters,
+      hasActiveFilters: filtersActive,
+      activeFilterSummary,
+      checkedTimeLabel,
+      relaxedReason
+    };
+  }
+
+  window.HNRestaurantHours = {
+    parseOpeningHours: parseOpeningHours,
+    parseTimeStringToMinutes: parseTimeStringToMinutes,
+    formatMinutesToHHMM: formatMinutesToHHMM,
+    isOpenAtMinutes: isOpenAtMinutes,
+    isOpenAtTimeString: isOpenAtTimeString,
+    getSelectedTimeContext: getSelectedTimeContext,
+    findSimilarOpenRestaurants: findSimilarOpenRestaurants
+  };
+
+  window.HNFilterState = {
+    getState: getFilterStateSnapshot,
+    hasActiveFilters: hasActiveFilters,
+    getActiveFilterSummary: getActiveFilterSummary
   };
 
   // --- SOUND SYNTHESIZER (Web Audio API) ---
@@ -178,6 +732,7 @@
   function getFilteredRestaurants() {
     const rawQuery = state.search.trim().toLowerCase();
     const normQuery = normalizeVi(state.search);
+    const timeCtx = state.quickFilter === 'open_now' ? getSelectedTimeContext() : null;
 
     return RESTAURANTS_DATA.filter((item) => {
       const badges = Array.isArray(item.specialBadges) ? item.specialBadges : [];
@@ -228,7 +783,9 @@
       }
 
       // Quick filter
-      if (state.quickFilter === 'michelin') {
+      if (state.quickFilter === 'open_now' && timeCtx) {
+        if (!isOpenAtMinutes(item, timeCtx.minutes, timeCtx.dayOfWeek)) return false;
+      } else if (state.quickFilter === 'michelin') {
         const isMichelin = badges.some(b => String(b).toLowerCase().includes('michelin'));
         if (!isMichelin) return false;
       } else if (state.quickFilter === 'hadong') {
@@ -322,6 +879,8 @@
       }
     }
 
+    const timeCtx = getSelectedTimeContext();
+
     // Render cards cho trang hiện tại
     container.innerHTML = pageItems.map((item) => {
       const isFav = state.favorites.has(item.id);
@@ -332,6 +891,8 @@
       const reviewsCount = Number(item.reviews) || 120;
       const peopleRange = item.peopleRange || '1 - 6 người';
       const openingHours = item.openingHours || item.openHours || '07:00 - 22:00';
+      const isOpenNow = isOpenAtMinutes(item, timeCtx.minutes, timeCtx.dayOfWeek);
+      const openBadgeHtml = `<div class="card-open-status ${isOpenNow ? 'is-open' : 'is-closed'}">${isOpenNow ? '🟢 Đang mở lúc ' : '🔴 Đóng cửa lúc '}${escapeHtml(timeCtx.timeLabel)}</div>`;
       const description = item.description || item.subname || '';
       const tips = item.tips || ('Mở cửa khung giờ ' + openingHours + '.');
       const mapsUrl = item.mapsUrl || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((item.name || '') + ' ' + (item.address || '')));
@@ -407,6 +968,7 @@
                 <span class="row-icon">⏰</span>
                 <span>${escapeHtml(openingHours)}</span>
               </div>
+              ${openBadgeHtml}
             </div>
 
             <div class="card-actions">
@@ -734,12 +1296,21 @@
   }
 
   // --- DETAIL MODAL ---
-  function openDetailModal(id) {
+  function openDetailModal(id, overrideMinutes) {
     const restaurant = RESTAURANTS_DATA.find(r => r.id === id);
     if (!restaurant) return;
 
     const modal = document.getElementById('detailModal');
     if (!modal) return;
+
+    const baseCtx = getSelectedTimeContext();
+    const hasOverride = typeof overrideMinutes === 'number' && !isNaN(overrideMinutes);
+    const targetMinutes = hasOverride
+      ? ((Math.floor(overrideMinutes) % 1440) + 1440) % 1440
+      : baseCtx.minutes;
+    const targetDayOfWeek = baseCtx.dayOfWeek;
+    const timeLabel = formatMinutesToHHMM(targetMinutes);
+    const isOpenAtTarget = isOpenAtMinutes(restaurant, targetMinutes, targetDayOfWeek);
 
     const isFav = state.favorites.has(restaurant.id);
     const isReservable = window.HNOrderBooking ? window.HNOrderBooking.canReserve(restaurant) : false;
@@ -752,6 +1323,106 @@
     const description = restaurant.description || restaurant.subname || '';
     const tips = restaurant.tips || ('Mở cửa khung giờ ' + openingHours + '.');
     const mapsUrl = restaurant.mapsUrl || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((restaurant.name || '') + ' ' + (restaurant.address || '')));
+
+    const timeCheckPresets = [
+      { value: String(baseCtx.minutes), label: (baseCtx.mode === 'now' ? '🕒 Giờ hiện tại (' + baseCtx.timeLabel + ')' : '🕒 Giờ đang lọc (' + baseCtx.timeLabel + ')') },
+      { value: '390', label: '06:30 (Sáng sớm)' },
+      { value: '480', label: '08:00 (Ăn sáng)' },
+      { value: '690', label: '11:30 (Ăn trưa)' },
+      { value: '750', label: '12:30 (Giờ trưa)' },
+      { value: '870', label: '14:30 (Buổi chiều)' },
+      { value: '960', label: '16:00 (Quà chiều)' },
+      { value: '1050', label: '17:30 (Đầu tối)' },
+      { value: '1140', label: '19:00 (Bữa tối)' },
+      { value: '1230', label: '20:30 (Buổi tối)' },
+      { value: '1320', label: '22:00 (Tối muộn)' },
+      { value: '1380', label: '23:00 (Ăn khuya)' },
+      { value: '30', label: '00:30 (Đêm khuya)' },
+      { value: '120', label: '02:00 (Rạng sáng)' }
+    ];
+    if (!timeCheckPresets.some(p => Number(p.value) === targetMinutes)) {
+      timeCheckPresets.splice(1, 0, { value: String(targetMinutes), label: '⏰ ' + timeLabel + ' (Đang kiểm tra)' });
+    }
+    const timeOptionsHtml = timeCheckPresets.map(p => {
+      const selected = Number(p.value) === targetMinutes ? 'selected' : '';
+      return `<option value="${p.value}" ${selected}>${escapeHtml(p.label)}</option>`;
+    }).join('');
+
+    let closedAndSimilarHtml = '';
+    if (!isOpenAtTarget) {
+      const similarRes = findSimilarOpenRestaurants(restaurant, {
+        targetMinutes,
+        targetDayOfWeek,
+        timeLabel,
+        limit: 6
+      });
+      const filterNoteText = similarRes.hasActiveFilters
+        ? (similarRes.matchedActiveFilters
+            ? ('✓ Đang giữ đúng bộ lọc: ' + similarRes.activeFilterSummary)
+            : (similarRes.relaxedReason || 'Đã mở rộng bộ lọc để tìm quán đang mở'))
+        : ('Tất cả quán gợi ý dưới đây đều đang mở lúc ' + timeLabel);
+
+      const similarCardsHtml = similarRes.items.length
+        ? similarRes.items.map((entry) => {
+            const s = entry.restaurant;
+            const sReservable = window.HNOrderBooking ? window.HNOrderBooking.canReserve(s) : false;
+            const sHours = s.openingHours || s.openHours || '07:00 - 22:00';
+            const tagsHtml = entry.reasons
+              .map(reason => `<span class="similar-open-tag">${escapeHtml(reason)}</span>`)
+              .join('');
+            return `
+              <article class="similar-open-card" data-similar-id="${s.id}">
+                <img
+                  src="${s.image}"
+                  alt="${escapeHtml(s.name)}"
+                  class="similar-open-thumb"
+                  loading="lazy"
+                  onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80'"
+                />
+                <div class="similar-open-body">
+                  <div class="similar-open-title">${escapeHtml(s.name)}</div>
+                  <div class="similar-open-meta">
+                    <span>★ ${s.rating}</span>
+                    <span>• ${escapeHtml(s.district)}</span>
+                    <span>• ${escapeHtml(s.priceRange)}</span>
+                    <span>• ⏰ ${escapeHtml(sHours)}</span>
+                  </div>
+                  <div class="similar-open-tags">
+                    <span class="similar-open-tag">🟢 Đang mở lúc ${escapeHtml(timeLabel)}</span>
+                    ${tagsHtml}
+                  </div>
+                  <div class="similar-open-actions">
+                    <button type="button" class="btn-similar-view" data-similar-view="${s.id}">👁️ Xem quán</button>
+                    <button type="button" class="btn-similar-order" data-similar-delivery="${s.id}">🛵 Đặt món</button>
+                    ${sReservable ? `<button type="button" class="btn-similar-order" data-similar-reserve="${s.id}">🪑 Đặt bàn</button>` : ''}
+                  </div>
+                </div>
+              </article>
+            `;
+          }).join('')
+        : `<p style="font-size:0.86rem; color:var(--text-muted); margin:0;">Hiện chưa tìm thấy quán tương tự đang mở lúc ${escapeHtml(timeLabel)}. Hãy thử đổi sang khung giờ khác nhé.</p>`;
+
+      closedAndSimilarHtml = `
+        <div class="closed-alert-box" role="status">
+          <div class="closed-alert-header">
+            <span>🔴 Quán đang đóng cửa lúc ${escapeHtml(timeLabel)}</span>
+          </div>
+          <div class="closed-alert-sub">
+            Khung giờ phục vụ của <strong>${escapeHtml(restaurant.name)}</strong> là <strong>${escapeHtml(openingHours)}</strong>.
+            Gợi ý các quán tương tự đang mở cửa lúc ${escapeHtml(timeLabel)} bên dưới để bạn chọn nhanh:
+          </div>
+        </div>
+        <section class="similar-open-section" aria-label="Quán tương tự đang mở cửa">
+          <div class="similar-open-head">
+            <h4>🟢 Quán Tương Tự Đang Mở Lúc ${escapeHtml(timeLabel)}</h4>
+            <span class="similar-filter-note">${escapeHtml(filterNoteText)}</span>
+          </div>
+          <div class="similar-open-grid">
+            ${similarCardsHtml}
+          </div>
+        </section>
+      `;
+    }
 
     const badgesHtml = badges
       .map(b => `<span class="badge-tag ${String(b).toLowerCase().includes('michelin') ? 'michelin' : ''}">✦ ${escapeHtml(b)}</span>`)
@@ -796,6 +1467,20 @@
       </div>
 
       <div class="detail-content-body">
+        <div class="detail-time-check-bar">
+          <span class="detail-open-status ${isOpenAtTarget ? 'is-open' : 'is-closed'}">
+            ${isOpenAtTarget ? '🟢 Đang mở lúc ' : '🔴 Đóng cửa lúc '}${escapeHtml(timeLabel)}
+          </span>
+          <label for="detailCheckTimeSelect" style="display:flex; align-items:center; gap:8px; font-weight:600;">
+            <span>🕒 Kiểm tra giờ khác:</span>
+            <select id="detailCheckTimeSelect" class="detail-time-select">
+              ${timeOptionsHtml}
+            </select>
+          </label>
+        </div>
+
+        ${closedAndSimilarHtml}
+
         <div class="detail-meta-grid">
           <div class="detail-meta-item">
             <span style="font-size: 1.3rem;">💰</span>
@@ -892,6 +1577,41 @@
 
     // Modal Events
     document.getElementById('btnCloseDetailModal')?.addEventListener('click', closeDetailModal);
+    document.getElementById('detailCheckTimeSelect')?.addEventListener('change', (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (!isNaN(val)) {
+        playTickSound(540);
+        openDetailModal(restaurant.id, val);
+      }
+    });
+
+    container.querySelectorAll('[data-similar-view]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const sid = parseInt(btn.getAttribute('data-similar-view'), 10);
+        if (!isNaN(sid)) openDetailModal(sid, targetMinutes);
+      });
+    });
+
+    container.querySelectorAll('[data-similar-delivery]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const sid = parseInt(btn.getAttribute('data-similar-delivery'), 10);
+        if (!isNaN(sid)) {
+          closeDetailModal();
+          if (window.HNOrderBooking) window.HNOrderBooking.openDelivery(sid);
+        }
+      });
+    });
+
+    container.querySelectorAll('[data-similar-reserve]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const sid = parseInt(btn.getAttribute('data-similar-reserve'), 10);
+        if (!isNaN(sid)) {
+          closeDetailModal();
+          if (window.HNOrderBooking) window.HNOrderBooking.openReservation(sid);
+        }
+      });
+    });
+
     document.getElementById('btnCopyAddress')?.addEventListener('click', () => {
       navigator.clipboard.writeText(restaurant.address).then(() => {
         showToast('Đã sao chép địa chỉ quán vào khay nhớ tạm!');
@@ -902,7 +1622,7 @@
 
     document.getElementById('btnModalToggleFav')?.addEventListener('click', () => {
       toggleFavorite(restaurant.id);
-      openDetailModal(restaurant.id); // re-render modal fav state
+      openDetailModal(restaurant.id, hasOverride ? targetMinutes : undefined); // re-render modal fav state
     });
 
     document.getElementById('btnModalDelivery')?.addEventListener('click', () => {
@@ -1468,6 +2188,32 @@
       renderRestaurants();
     });
 
+    // Time slot & custom time input
+    const timeSlotSelect = document.getElementById('timeSlotSelect');
+    const customTimeInput = document.getElementById('customTimeInput');
+    if (timeSlotSelect) {
+      timeSlotSelect.addEventListener('change', (e) => {
+        state.timeSlot = e.target.value || 'now';
+        if (customTimeInput) {
+          customTimeInput.hidden = (state.timeSlot !== 'custom');
+        }
+        state.currentPage = 1;
+        playTickSound(500);
+        renderRestaurants();
+      });
+    }
+    if (customTimeInput) {
+      const onCustomTimeUpdate = (e) => {
+        state.customTime = e.target.value || '19:00';
+        if (state.timeSlot === 'custom') {
+          state.currentPage = 1;
+          renderRestaurants();
+        }
+      };
+      customTimeInput.addEventListener('input', onCustomTimeUpdate);
+      customTimeInput.addEventListener('change', onCustomTimeUpdate);
+    }
+
     // Sort Select
     document.getElementById('sortBySelect')?.addEventListener('change', (e) => {
       state.sortBy = e.target.value;
@@ -1540,6 +2286,8 @@
     state.district = 'all';
     state.occasion = 'all';
     state.quickFilter = 'all';
+    state.timeSlot = 'now';
+    state.customTime = '19:00';
     state.sortBy = 'rating_desc';
     state.currentPage = 1;
 
@@ -1557,6 +2305,15 @@
 
     const occasionSelect = document.getElementById('occasionSelect');
     if (occasionSelect) occasionSelect.value = 'all';
+
+    const timeSlotSelect = document.getElementById('timeSlotSelect');
+    if (timeSlotSelect) timeSlotSelect.value = 'now';
+
+    const customTimeInput = document.getElementById('customTimeInput');
+    if (customTimeInput) {
+      customTimeInput.value = '19:00';
+      customTimeInput.hidden = true;
+    }
 
     const sortSelect = document.getElementById('sortBySelect');
     if (sortSelect) sortSelect.value = 'rating_desc';
@@ -1653,72 +2410,102 @@
 
 /* ==========================================================================
    CO LAN — OFFLINE AI ENGINE (no API key, runs fully in-browser)
-   Intent detection + Restaurant filter + Vietnamese responses
+   Strict Domain Guard + Opening Hours & Active Filter Aware + Restaurant Lookup
    ========================================================================== */
 (function () {
   'use strict';
 
-  var $ = function(id) { return document.getElementById(id); };
+  var OFF_TOPIC_REPLY = 'Câu hỏi này nằm ngoài hiểu biết của tôi.';
+
+  var $ = function (id) { return typeof document !== 'undefined' ? document.getElementById(id) : null; };
   var btnOpen = $('aiBtnOpen'), panel = $('aiChatPanel'),
       btnClose = $('aiBtnClose'), btnClear = $('aiBtnClear'),
       btnInfo = $('aiBtnSettings'), messagesEl = $('aiMessages'),
       textarea = $('aiTextInput'), btnSend = $('aiBtnSend'),
-      chips = document.querySelectorAll('.ai-chip'),
+      chips = typeof document !== 'undefined' ? document.querySelectorAll('.ai-chip') : [],
       unreadBadge = $('aiUnreadBadge'), statusDot = $('aiStatusDot');
-
-  if (!btnOpen || !panel || !messagesEl) return;
 
   var isOpen = false, isBusy = false;
 
   /* ---- INTENT RULES ---- */
   var INTENTS = [
     {id:'greet',   kw:['xin chao','hello','chao ban','chao em','chao co','chao co lan','hi','hey','alo']},
-    {id:'thanks',  kw:['cam on','cam on','thank','tuyet','ok roi','duoc roi']},
-    {id:'random',  kw:['hom nay an gi','khong biet an gi','chon giup','ngau nhien','random','goi y cho toi','bat ky']},
-    {id:'top',     kw:['ngon nhat','noi tieng nhat','best','top ','noi tieng','michelin','danh gia cao','hay nhat']},
-    {id:'cheap',   kw:['re','gia re','tiet kiem','binh dan','duoi 100','it tien','cheap','khong dat']},
-    {id:'luxury',  kw:['sang trong','cao cap','vip','fine dining','dat','premium','luxury','5 sao']},
+    {id:'thanks',  kw:['cam on','thank','thanks','tuyet voi','ok roi','duoc roi']},
+    {id:'random',  kw:['hom nay an gi','khong biet an gi','chon giup','ngau nhien','random','goi y cho toi','bat ky','an gi bay gio','an gi gio']},
+    {id:'top',     kw:['ngon nhat','noi tieng nhat','best','top','noi tieng','michelin','danh gia cao','hay nhat']},
+    {id:'cheap',   kw:['re','gia re','tiet kiem','binh dan','duoi 100','duoi 50','it tien','cheap','khong dat']},
+    {id:'luxury',  kw:['sang trong','cao cap','vip','fine dining','dat tien','premium','luxury','5 sao']},
     {id:'mid',     kw:['tam trung','khoang 100','khoang 200','vua tui']},
     {id:'breakfast',kw:['an sang','bua sang','sang som','buoi sang','diem tam']},
     {id:'lunch',   kw:['an trua','bua trua','buoi trua','com trua']},
-    {id:'quick',   kw:['an nhanh','nhanh','fast','gon nhe']},
+    {id:'quick',   kw:['an nhanh','nhanh gon','fast','gon nhe']},
     {id:'dinner',  kw:['an toi','bua toi','buoi toi','toi nay','dinner']},
-    {id:'late',    kw:['an khuya','khuya','dem khuya','late night','11 gio','12 gio','nua dem']},
+    {id:'late',    kw:['an khuya','an dem','khuya','dem khuya','dem muon','late night','nua dem']},
     {id:'date',    kw:['hen ho','lang man','tinh cam','romantic','date','nguoi yeu']},
     {id:'family',  kw:['gia dinh','ca nha','hop mat','bo me','ba me','dong nguoi']},
     {id:'friends', kw:['ban be','tu tap','hoi ban','nhom ban','ca nhom']},
     {id:'party',   kw:['tiec','party','sinh nhat','ky niem','celebration']},
-    {id:'drinks',  kw:['nhau','bia','uong','bar','cocktail','ruou']},
+    {id:'drinks',  kw:['nhau','bia','uong bia','bar','cocktail','ruou']},
     {id:'solo',    kw:['1 nguoi','mot minh','di mot minh','solo']},
-    {id:'d_hk',   kw:['hoan kiem','pho co','old quarter']},
-    {id:'d_th',   kw:['tay ho','ho tay','xuan dieu']},
-    {id:'d_dd',   kw:['dong da','kim lien','thai thinh','lang ha']},
-    {id:'d_hbt',  kw:['hai ba trung','ba trieu']},
-    {id:'d_bd',   kw:['ba dinh','kim ma']},
-    {id:'d_cg',   kw:['cau giay','dich vong','tran thai tong']},
-    {id:'d_hd',   kw:['ha dong','mo lao','yen nghia']},
-    {id:'d_tx',   kw:['thanh xuan','nguyen trai']},
-    {id:'d_lb',   kw:['long bien']},
-    {id:'d_hm',   kw:['hoang mai','giap bat']},
-    {id:'d_ntl',  kw:['nam tu liem','my dinh','me tri','le quang dao','phu do']},
-    {id:'d_btl',  kw:['bac tu liem','co nhue','phu dien','xuan dinh','hoang quoc viet']},
-    {id:'d_uni',  kw:['dai hoc','gần trường','truong dai','sinh vien','university']},
-    {id:'f_pho',  kw:['pho ','bun bo','bun rieu']},
-    {id:'f_bun',  kw:['bun cha','bun dau','bun oc','bun']},
-    {id:'f_banh', kw:['banh mi','banh cuon','banh xeo']},
-    {id:'f_xoi',  kw:['xoi','chao']},
-    {id:'f_com',  kw:['com ']},
-    {id:'f_lau',  kw:['lau ']},
-    {id:'f_nuong',kw:['nuong','bbq']},
-    {id:'f_sea',  kw:['hai san','tom','cua','muc','seafood','oc ']},
-    {id:'f_jp',   kw:['sushi','nhat','japanese','ramen']},
-    {id:'f_kr',   kw:['han quoc','do han','mon han','korean','kimchi','tokbokki','kimbap','jokbal','chimaek']},
-    {id:'f_cn',   kw:['trung quoc','trung hoa','mon hoa','do trung','tau','chinese','dimsum','tieu long bao','ha cao','trung khanh','tu xuyen','quang dong','vit quay']},
-    {id:'f_veg',  kw:['chay','vegetarian','vegan']},
-    {id:'f_cafe', kw:['ca phe','cafe','coffee','tra sua']},
-    {id:'f_sweet',kw:['kem','trang mieng','dessert','che','an vat','qua vat','nem chua ran','banh goi','banh trang','quay nong','hoa qua dam','tao pho']},
-    {id:'f_pizza',kw:['pizza','pasta']},
-    {id:'off',    kw:['thoi tiet','chung khoan','bitcoin','bong da','phim','am nhac','suc khoe','thuoc','benh','hoc tap','lap trinh','code']},
+    {id:'d_hk',    kw:['hoan kiem','pho co','old quarter']},
+    {id:'d_th',    kw:['tay ho','ho tay','xuan dieu']},
+    {id:'d_dd',    kw:['dong da','kim lien','thai thinh','lang ha']},
+    {id:'d_hbt',   kw:['hai ba trung','ba trieu']},
+    {id:'d_bd',    kw:['ba dinh','kim ma']},
+    {id:'d_cg',    kw:['cau giay','dich vong','tran thai tong']},
+    {id:'d_hd',    kw:['ha dong','mo lao','yen nghia']},
+    {id:'d_tx',    kw:['thanh xuan','nguyen trai']},
+    {id:'d_lb',    kw:['long bien']},
+    {id:'d_hm',    kw:['hoang mai','giap bat']},
+    {id:'d_ntl',   kw:['nam tu liem','my dinh','me tri','le quang dao','phu do']},
+    {id:'d_btl',   kw:['bac tu liem','co nhue','phu dien','xuan dinh','hoang quoc viet']},
+    {id:'d_uni',   kw:['dai hoc','gan truong','truong dai','sinh vien','university']},
+    {id:'f_pho',   kw:['pho','bun bo','bun rieu']},
+    {id:'f_bun',   kw:['bun cha','bun dau','bun oc','bun thang','bun ca','bun']},
+    {id:'f_banh',  kw:['banh mi','banh cuon','banh xeo','banh tom','banh duc']},
+    {id:'f_xoi',   kw:['xoi','chao']},
+    {id:'f_com',   kw:['com','com tam','com nieu','com binh dan']},
+    {id:'f_lau',   kw:['lau','lau thai','lau rieu','lau ech']},
+    {id:'f_nuong', kw:['nuong','bbq','thit nuong','bo nuong']},
+    {id:'f_sea',   kw:['hai san','tom','cua','muc','seafood','oc','hau']},
+    {id:'f_jp',    kw:['sushi','do nhat','mon nhat','quan nhat','nha hang nhat','japanese','ramen','udon','sashimi']},
+    {id:'f_kr',    kw:['do han','mon han','quan han','nha hang han','korean','kimchi','tokbokki','kimbap','jokbal','chimaek','han quoc']},
+    {id:'f_cn',    kw:['do trung','mon trung','mon hoa','trung hoa','nha hang trung','dimsum','tieu long bao','ha cao','trung khanh','tu xuyen','quang dong','vit quay','chinese']},
+    {id:'f_veg',   kw:['do chay','mon chay','quan chay','an chay','vegetarian','vegan']},
+    {id:'f_cafe',  kw:['ca phe','cafe','coffee','tra sua','tra chanh']},
+    {id:'f_sweet', kw:['kem','trang mieng','dessert','che','an vat','qua vat','nem chua ran','banh goi','banh trang','quay nong','hoa qua dam','tao pho']},
+    {id:'f_pizza', kw:['pizza','pasta','steak']}
+  ];
+
+  var FOOD_DOMAIN_KEYWORDS = [
+    'quan an','quan ngon','nha hang','tiem an','hang an','am thuc','mon an','do an',
+    'thuc don','menu','dat ban','dat mon','giao hang','giao tan noi','dat giao','ship do an',
+    'mo cua','dong cua','gio mo','may gio mo','khung gio','con mo','dang mo',
+    'an gi','an sang','an trua','an toi','an khuya','an dem','an vat','qua vat','an nhanh',
+    'bua sang','bua trua','bua toi','diem tam','an chay','mon ngon','dac san','michelin',
+    'quan quen','so tay quan','tuong tu','thay the','goi y quan','chon quan',
+    'pho','bun','bun cha','bun dau','bun oc','bun rieu','bun bo','banh mi','banh cuon',
+    'banh xeo','banh goi','xoi','chao','com','com nieu','lau','nuong','bbq','cha ca',
+    'hai san','oc','sushi','ramen','udon','sashimi','dimsum','ha cao','tieu long bao',
+    'kimchi','tokbokki','kimbap','vit quay','ca phe','cafe','coffee','tra sua','tra chanh',
+    'che','kem','trang mieng','tao pho','hoa qua dam','nem chua ran','pizza','pasta','steak',
+    'do han','mon han','do trung','mon trung','mon hoa','do nhat','mon nhat','do chay','mon chay',
+    'hen ho','nhau','tiec','binh dan','cao cap','sang trong','ngon','duong pho'
+  ];
+
+  var OFF_TOPIC_KEYWORDS = [
+    'thoi tiet','du bao thoi tiet','mua khong','nang khong','nhiet do','bao so','ap thap',
+    'chung khoan','co phieu','vnindex','bitcoin','crypto','tien ao','ty gia','gia vang','ngoai te','ngan hang','lai suat',
+    'bong da','da bong','world cup','ngoai hang anh','champions league','the thao','ty so','tennis','nba',
+    'xem phim','rap chieu phim','dien vien','bo phim','am nhac','bai hat','ca si','nghe nhac','mv ca nhac',
+    'suc khoe','thuoc tay','benh vien','bac si','trieu chung','dau dau','cam cum','covid','ung thu','chua benh',
+    'lap trinh','viet code','code','python','javascript','html','css','java','sql','thuat toan','chatgpt','openai','react',
+    'toan hoc','phuong trinh','tich phan','dao ham','giai toan','vat ly','hoa hoc','sinh hoc',
+    'lich su','chien tranh','the chien','chinh tri','chinh phu','quoc hoi','thu do','dan so','dien tich','hanh tinh','mat trang','mat troi',
+    'dien thoai','iphone','samsung','laptop','macbook','o to','xe may','xe hoi',
+    'khach san','ve may bay','dat phong','tour du lich','resort','homestay',
+    'ke chuyen cuoi','chuyen cuoi','lam tho','bai tho','cau do','dich sang','translate',
+    'chung cu','bat dong san','xo so','lo de','ca cuoc'
   ];
 
   /* Bỏ dấu tiếng Việt: "Phở Hoàn Kiếm" -> "pho hoan kiem" */
@@ -1730,17 +2517,263 @@
       .trim();
   }
 
-  /* So khớp theo ranh giới từ để tránh "gon" khớp nhầm trong "ngon" */
+  function hasBoundaryPhrase(paddedNormMsg, phrase) {
+    var key = norm(phrase);
+    return Boolean(key && paddedNormMsg.indexOf(' ' + key + ' ') !== -1);
+  }
+
+  function hoursApi() {
+    return (typeof window !== 'undefined' && window.HNRestaurantHours) ? window.HNRestaurantHours : null;
+  }
+
+  function filterStateApi() {
+    return (typeof window !== 'undefined' && window.HNFilterState) ? window.HNFilterState : null;
+  }
+
+  var _restIndexCache = null;
+  var _restIndexLen = -1;
+  var GENERIC_NAME_WORDS = {
+    nha: 1, hang: 1, quan: 1, tiem: 1, cua: 1, an: 1, uong: 1,
+    ha: 1, noi: 1, thanh: 1, pho: 1, bun: 1, com: 1, lau: 1,
+    nuong: 1, che: 1, ca: 1, phe: 1, tra: 1, sua: 1, banh: 1,
+    gia: 1, truyen: 1, dac: 1, san: 1, ngon: 1, so: 1
+  };
+
+  var NON_BRAND_TOKENS = {
+    nha:1,hang:1,quan:1,tiem:1,cua:1,an:1,uong:1,ha:1,noi:1,thanh:1,pho:1,bun:1,com:1,lau:1,
+    nuong:1,che:1,ca:1,phe:1,tra:1,sua:1,banh:1,gia:1,truyen:1,dac:1,san:1,ngon:1,so:1,
+    hoan:1,kiem:1,dong:1,da:1,tay:1,ho:1,ba:1,dinh:1,cau:1,giay:1,hai:1,trung:1,xuan:1,
+    nam:1,bac:1,tu:1,liem:1,long:1,bien:1,hoang:1,mai:1,viet:1,phap:1,nhat:1,han:1,quoc:1,
+    hoa:1,my:1,anh:1,duc:1,thoi:1,tiet:1,lich:1,su:1,phim:1,nhac:1,bong:1,thu:1,do:1,
+    tinh:1,toan:1,code:1,game:1,iphone:1,samsung:1,laptop:1,bitcoin:1,crypto:1,hom:1,nay:1,
+    ngay:1,thang:1,gio:1,luc:1,may:1,nhieu:1,bao:1,nhau:1,muon:1,thich:1,choi:1,chay:1,
+    mua:1,ban:1,nang:1,dau:1,the:1,nao:1,khong:1,mo:1,xin:1,chao:1,cam:1,hello:1,tai:1,
+    gan:1,khu:1,vuc:1,duong:1,ngo:1,phuong:1,vincom:1,times:1,royal:1,aeon:1,center:1,
+    plaza:1,house:1,food:1,kitchen:1,garden:1,coffee:1,cafe:1,tea:1,milk:1,king:1,queen:1,
+    hot:1,pot:1,bbq:1,buffet:1,mini:1,plus:1,vip:1,pro:1,top:1,best:1,new:1,old:1,
+    benh:1,thuoc:1,hoc:1,tap:1,chuyen:1,cuoi:1,tho:1,dich:1,tien:1,vang:1,xem:1
+  };
+
+  function getRestaurantIndex() {
+    var list = db();
+    if (_restIndexCache && _restIndexLen === list.length) return _restIndexCache;
+    _restIndexLen = list.length;
+    _restIndexCache = list.map(function (r) {
+      var noParen = String(r.name || '').replace(/\([^)]*\)/g, ' ');
+      var normFull = norm(r.name);
+      var normNoParen = norm(noParen);
+      var normCore = normNoParen.replace(/^(nha hang|cua hang an uong|cua hang|quan an|quan|tiem an|tiem)\s+/, '').trim();
+      var tokens = normNoParen ? normNoParen.split(' ') : [];
+      var distinctTokens = tokens.filter(function (t) { return t.length >= 2 && !GENERIC_NAME_WORDS[t]; });
+      var firstTok = tokens[0] || '';
+      var brandToken = (firstTok.length >= 4 && !NON_BRAND_TOKENS[firstTok] && !/^\d+$/.test(firstTok)) ? firstTok : '';
+      return {
+        restaurant: r,
+        normFull: normFull,
+        normNoParen: normNoParen,
+        normCore: normCore,
+        tokens: tokens,
+        distinctTokens: distinctTokens,
+        brandToken: brandToken
+      };
+    });
+    return _restIndexCache;
+  }
+
+  function findBrandRestaurants(msg) {
+    var nMsg = norm(msg);
+    if (!nMsg || nMsg.length < 4) return [];
+    var msgTokens = nMsg.split(' ');
+    var index = getRestaurantIndex();
+    var matches = [];
+    for (var i = 0; i < index.length; i++) {
+      var bt = index[i].brandToken;
+      if (bt && msgTokens.indexOf(bt) !== -1) {
+        matches.push(index[i].restaurant);
+      }
+    }
+    return matches;
+  }
+
+  function findMentionedRestaurant(msg) {
+    var nMsg = norm(msg);
+    if (!nMsg || nMsg.length < 3) return null;
+    var padded = ' ' + nMsg + ' ';
+    var msgTokens = nMsg.split(' ');
+    var index = getRestaurantIndex();
+    var best = null;
+    var bestScore = 0;
+
+    for (var i = 0; i < index.length; i++) {
+      var entry = index[i];
+      var score = 0;
+      if (entry.normFull && padded.indexOf(' ' + entry.normFull + ' ') !== -1) {
+        score = 1000 + entry.normFull.length;
+      } else if (entry.normNoParen && entry.normNoParen.length >= 6 && padded.indexOf(' ' + entry.normNoParen + ' ') !== -1) {
+        score = 900 + entry.normNoParen.length;
+      } else if (entry.normCore && entry.normCore.length >= 6 && entry.normCore.split(' ').length >= 2 && padded.indexOf(' ' + entry.normCore + ' ') !== -1) {
+        score = 800 + entry.normCore.length;
+      } else if (entry.distinctTokens.length >= 2 && entry.tokens.length >= 2) {
+        var matchedDistinct = 0;
+        for (var d = 0; d < entry.distinctTokens.length; d++) {
+          if (msgTokens.indexOf(entry.distinctTokens[d]) !== -1) matchedDistinct++;
+        }
+        var hasFirst = msgTokens.indexOf(entry.tokens[0]) !== -1;
+        if (matchedDistinct === entry.distinctTokens.length && (hasFirst || matchedDistinct >= 2)) {
+          score = 600 + matchedDistinct * 20;
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = entry.restaurant;
+      }
+    }
+    return best;
+  }
+
+  function hasDishMatchInData(msg) {
+    var nMsg = norm(msg);
+    if (!nMsg || nMsg.length < 4) return false;
+    var padded = ' ' + nMsg + ' ';
+    var list = db();
+    for (var i = 0; i < list.length; i++) {
+      var dishes = list[i].signatureDishes;
+      if (!Array.isArray(dishes)) continue;
+      for (var j = 0; j < dishes.length; j++) {
+        var nd = norm(dishes[j]);
+        if (nd && nd.split(' ').length >= 2 && padded.indexOf(' ' + nd + ' ') !== -1) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   function detectIntents(msg) {
     var n = ' ' + norm(msg) + ' ';
     var found = [];
-    INTENTS.forEach(function(rule) {
-      if (rule.kw.some(function(k) {
-        var key = norm(k);
-        return key && n.indexOf(' ' + key + ' ') !== -1;
+    INTENTS.forEach(function (rule) {
+      if (rule.kw.some(function (k) {
+        return hasBoundaryPhrase(n, k);
       })) found.push(rule.id);
     });
     return found.length ? found : ['unknown'];
+  }
+
+  function hasFoodOrRestaurantSignal(msg, intents) {
+    var n = ' ' + norm(msg) + ' ';
+    if (!n.trim()) return false;
+    for (var i = 0; i < FOOD_DOMAIN_KEYWORDS.length; i++) {
+      if (hasBoundaryPhrase(n, FOOD_DOMAIN_KEYWORDS[i])) return true;
+    }
+    var foodIntents = [
+      'random','top','cheap','luxury','mid','breakfast','lunch','quick','dinner','late',
+      'date','family','friends','party','drinks','solo',
+      'f_pho','f_bun','f_banh','f_xoi','f_com','f_lau','f_nuong','f_sea',
+      'f_jp','f_kr','f_cn','f_veg','f_cafe','f_sweet','f_pizza'
+    ];
+    for (var j = 0; j < foodIntents.length; j++) {
+      if (intents.indexOf(foodIntents[j]) !== -1) return true;
+    }
+    if (findMentionedRestaurant(msg)) return true;
+    if (findBrandRestaurants(msg).length > 0) return true;
+    if (hasDishMatchInData(msg)) return true;
+    return false;
+  }
+
+  function hasOffTopicSignal(msg) {
+    var n = ' ' + norm(msg) + ' ';
+    for (var i = 0; i < OFF_TOPIC_KEYWORDS.length; i++) {
+      if (hasBoundaryPhrase(n, OFF_TOPIC_KEYWORDS[i])) return true;
+    }
+    if (/\b(la gi|o dau|bao nhieu tuoi|ai la|nam nao)\b/.test(n) && !/\b(quan|nha hang|mon|an|pho|bun|com|lau|che|banh)\b/.test(n)) {
+      return true;
+    }
+    return false;
+  }
+
+  function isRestaurantRelated(msg, intentsOpt) {
+    var trimmed = String(msg || '').trim();
+    if (!trimmed) return false;
+    var intents = Array.isArray(intentsOpt) ? intentsOpt : detectIntents(trimmed);
+    var explicitFood = hasFoodOrRestaurantSignal(trimmed, intents);
+    var offTopic = hasOffTopicSignal(trimmed);
+    if (offTopic && !explicitFood) return false;
+    if (explicitFood) return true;
+    var isPureSocial = (intents.indexOf('greet') !== -1 || intents.indexOf('thanks') !== -1) && !offTopic;
+    if (isPureSocial) {
+      var words = norm(trimmed).split(' ').filter(Boolean);
+      if (words.length <= 8) return true;
+    }
+    return false;
+  }
+
+  function extractTimeFromQuery(msg) {
+    var hApi = hoursApi();
+    var fallbackCtx = hApi
+      ? hApi.getSelectedTimeContext()
+      : (function () {
+          var d = new Date();
+          var m = d.getHours() * 60 + d.getMinutes();
+          return { mode: 'now', minutes: m, timeLabel: (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(), dayOfWeek: d.getDay() };
+        })();
+
+    var raw = String(msg || '');
+    var n = norm(raw);
+    var formatFn = hApi ? hApi.formatMinutesToHHMM : function (m) {
+      var nm = ((Math.floor(m) % 1440) + 1440) % 1440;
+      var hh = Math.floor(nm / 60), mm = nm % 60;
+      return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+    };
+
+    var rawNorm = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+    var rawClock = rawNorm.match(/\b(\d{1,2})\s*(?::|h|gio)\s*(\d{1,2})?\s*(sang|trua|chieu|toi|dem|khuya|am|pm)?\b/);
+    if (rawClock) {
+      var hh = parseInt(rawClock[1], 10);
+      var mm = rawClock[2] ? parseInt(rawClock[2], 10) : 0;
+      var period = rawClock[3] || '';
+      if (!isNaN(hh) && hh >= 0 && hh <= 23 && !isNaN(mm) && mm >= 0 && mm <= 59) {
+        if ((period === 'chieu' || period === 'toi' || period === 'pm') && hh >= 1 && hh <= 11) {
+          hh += 12;
+        } else if (period === 'dem' || period === 'khuya') {
+          if (hh === 12) hh = 0;
+          else if (hh >= 6 && hh <= 11) hh += 12;
+        } else if ((period === 'sang' || period === 'am') && hh === 12) {
+          hh = 0;
+        }
+        var mins = hh * 60 + mm;
+        return {
+          explicit: true,
+          minutes: mins,
+          timeLabel: formatFn(mins),
+          dayOfWeek: fallbackCtx.dayOfWeek
+        };
+      }
+    }
+
+    var namedMins = null;
+    if (/\b(sang som)\b/.test(n)) namedMins = 6 * 60 + 30;
+    else if (/\b(sang nay|buoi sang|an sang)\b/.test(n)) namedMins = 8 * 60;
+    else if (/\b(trua nay|buoi trua|an trua)\b/.test(n)) namedMins = 12 * 60;
+    else if (/\b(chieu nay|buoi chieu)\b/.test(n)) namedMins = 15 * 60 + 30;
+    else if (/\b(toi nay|buoi toi|an toi)\b/.test(n)) namedMins = 19 * 60 + 30;
+    else if (/\b(dem nay|nua dem|khuya|an khuya|an dem)\b/.test(n)) namedMins = 23 * 60;
+
+    if (namedMins !== null) {
+      return {
+        explicit: true,
+        minutes: namedMins,
+        timeLabel: formatFn(namedMins),
+        dayOfWeek: fallbackCtx.dayOfWeek
+      };
+    }
+
+    return {
+      explicit: false,
+      minutes: fallbackCtx.minutes,
+      timeLabel: fallbackCtx.timeLabel,
+      dayOfWeek: fallbackCtx.dayOfWeek
+    };
   }
 
   /* ---- DATA ---- */
@@ -1772,7 +2805,7 @@
     Object.keys(OMAP).forEach(function(k){if(intents.indexOf(k)!==-1&&!occKey)occKey=k;});
     Object.keys(CMAP).forEach(function(k){if(intents.indexOf(k)!==-1&&!catKey)catKey=k;});
     if(intents.indexOf('cheap')!==-1)priceFilter=['budget','moderate'];
-    else if(intents.indexOf('luxury')!==-1)priceFilter=['expensive','luxury'];
+    else if(intents.indexOf('luxury')!==-1)priceFilter=['upscale','luxury'];
     else if(intents.indexOf('mid')!==-1)priceFilter=['moderate'];
     if(intents.indexOf('solo')!==-1)sizeFilter='solo';
     else if(intents.indexOf('date')!==-1)sizeFilter='couple';
@@ -1788,14 +2821,32 @@
   }
 
   /* ---- FORMAT ---- */
-  function fmtOne(r){
+  function statusMarker(r, timeCtx) {
+    var hApi = hoursApi();
+    if (!hApi) return '';
+    var open = hApi.isOpenAtMinutes(r, timeCtx.minutes, timeCtx.dayOfWeek);
+    return open
+      ? '[[ai-open:🟢 Đang mở lúc ' + timeCtx.timeLabel + ']]'
+      : '[[ai-closed:🔴 Đóng cửa lúc ' + timeCtx.timeLabel + ']]';
+  }
+
+  function detailBtnMarker(r, timeCtx, label) {
+    var mins = timeCtx ? timeCtx.minutes : '';
+    return '[[ai-detail:' + r.id + '|' + mins + '|' + (label || '📖 Xem quán') + ']]';
+  }
+
+  function fmtOne(r, timeCtx){
     var d=(r.signatureDishes||[]).slice(0,2).join(', ');
     var b=(r.specialBadges||[]).slice(0,1).map(function(x){return '✦ '+x;}).join('');
-    return '🍽️ **'+r.name+'**\n📍 '+r.address+'\n⭐ '+r.rating+' ('+r.reviews.toLocaleString('vi-VN')+' đánh giá)  ·  '+r.priceRange+'\n🥢 '+d+(b?'\n'+b:'')+'\n🗺 [Xem Google Maps]('+r.mapsUrl+')';
+    var hours=r.openingHours||r.openHours||'07:00 - 22:00';
+    var status=timeCtx?statusMarker(r,timeCtx)+' ':'';
+    return '🍽️ **'+r.name+'**\n'+status+'⏰ '+hours+'\n📍 '+r.address+'\n⭐ '+r.rating+' ('+(Number(r.reviews)||0).toLocaleString('vi-VN')+' đánh giá)  ·  '+r.priceRange+'\n🥢 '+d+(b?'\n'+b:'')+'\n🗺 [Xem Google Maps]('+r.mapsUrl+')  '+detailBtnMarker(r,timeCtx,'📖 Xem chi tiết');
   }
-  function fmtShort(r,i){
+  function fmtShort(r,i,timeCtx){
     var d=(r.signatureDishes||[]).slice(0,1).join('');
-    return (i+1)+'. **'+r.name+'** — '+r.district+'  ·  '+r.priceRange+'\n   📌 '+d+'  ·  ⭐'+r.rating;
+    var hours=r.openingHours||r.openHours||'07:00 - 22:00';
+    var status=timeCtx?statusMarker(r,timeCtx)+' ':'';
+    return (i+1)+'. **'+r.name+'** — '+r.district+'  ·  '+r.priceRange+'\n   '+status+'⏰ '+hours+'\n   📌 '+d+'  ·  ⭐'+r.rating+'  '+detailBtnMarker(r,timeCtx,'📖 Xem quán');
   }
 
   /* ---- RESPONSE TEMPLATES ---- */
@@ -1852,30 +2903,143 @@
     return rand(['🗺 Em tìm thấy mấy quán này phù hợp:','🍽️ Đây là mấy quán em gợi ý:','✨ Chị/anh thử mấy chỗ này nha:']);
   }
 
-  function respond(msg, intents){
-    var data=db(); if(!data.length) return 'Dữ liệu chưa tải, thử tải lại trang ạ.';
-    if(intents.indexOf('greet')!==-1) return rand(GREET);
-    if(intents.indexOf('thanks')!==-1) return rand(THANKS);
-    if(intents[0]==='off') return rand(OFF);
-    if(intents.indexOf('random')!==-1){
-      var r=pick(data,1)[0];
-      return rand(['🎲 Thôi để em chọn giúp! Hôm nay thử:','✨ Nhắm mắt bắt ngẫu nhiên, em chọn:','🏮 Cô Lan mách nhỏ một quán cực ngon:'])+'\n\n'+fmtOne(r);
+  function respond(msg, intentsOpt) {
+    var intents = Array.isArray(intentsOpt) ? intentsOpt : detectIntents(msg);
+
+    // 1. Strict domain guard: any non-restaurant / unknown / off-topic question MUST return exact OFF_TOPIC_REPLY
+    if (!isRestaurantRelated(msg, intents)) {
+      return OFF_TOPIC_REPLY;
     }
-    if(intents.indexOf('top')!==-1){
-      var pool=applyFilters(intents); if(!pool.length)pool=data;
-      var top=pool.slice().sort(function(a,b){return(b.rating-a.rating)||(b.reviews-a.reviews);}).slice(0,4);
-      return '⭐ Những quán được đánh giá cao nhất:\n\n'+top.map(fmtShort).join('\n\n')+'\n\n💡 _Hỏi thêm về quán nào em kể chi tiết ạ!_';
+
+    var data = db();
+    if (!data.length) return 'Dữ liệu chưa tải, thử tải lại trang ạ.';
+
+    if (intents.indexOf('greet') !== -1 && !hasFoodOrRestaurantSignal(msg, intents)) return rand(GREET);
+    if (intents.indexOf('thanks') !== -1 && !hasFoodOrRestaurantSignal(msg, intents)) return rand(THANKS);
+
+    var hApi = hoursApi();
+    var timeCtx = extractTimeFromQuery(msg);
+
+    // 2. Specific restaurant lookup (open vs closed + up to 3 similar open alternatives)
+    var mentioned = findMentionedRestaurant(msg);
+    if (mentioned && hApi) {
+      var isOpenAtTime = hApi.isOpenAtMinutes(mentioned, timeCtx.minutes, timeCtx.dayOfWeek);
+      if (isOpenAtTime) {
+        return '✅ **' + mentioned.name + '** hiện đang mở cửa vào lúc **' + timeCtx.timeLabel + '**!\n\n' + fmtOne(mentioned, timeCtx);
+      }
+
+      var simRes = hApi.findSimilarOpenRestaurants(mentioned, {
+        targetMinutes: timeCtx.minutes,
+        targetDayOfWeek: timeCtx.dayOfWeek,
+        timeLabel: timeCtx.timeLabel,
+        limit: 3
+      });
+      var hoursText = mentioned.openingHours || mentioned.openHours || '07:00 - 22:00';
+      var closedHeader = '⏰ **' + mentioned.name + '** [[ai-closed:🔴 Đóng cửa lúc ' + timeCtx.timeLabel + ']] (giờ phục vụ: **' + hoursText + '**)  ' + detailBtnMarker(mentioned, timeCtx, '📖 Xem quán');
+      var filterNote = '';
+      if (simRes.hasActiveFilters) {
+        filterNote = simRes.matchedActiveFilters
+          ? '\n🔎 _Đang giữ đúng bộ lọc của bạn: ' + simRes.activeFilterSummary + '_'
+          : '\n🔎 _' + simRes.relaxedReason + '_';
+      }
+      if (simRes.items.length) {
+        var altLines = simRes.items.map(function (entry, idx) {
+          var reasonStr = entry.reasons && entry.reasons.length ? ' (' + entry.reasons.join(', ') + ')' : '';
+          return fmtShort(entry.restaurant, idx, timeCtx) + (reasonStr ? '\n   ✨ _' + reasonStr.trim() + '_' : '');
+        }).join('\n\n');
+        return closedHeader + '\n\n🟢 **Gợi ý ' + simRes.items.length + ' quán tương tự đang mở cửa lúc ' + timeCtx.timeLabel + ':**' + filterNote + '\n\n' + altLines;
+      }
+      return closedHeader + '\n\nHiện tại chưa tìm thấy quán tương tự đang mở lúc ' + timeCtx.timeLabel + '. Chị/anh thử chọn khung giờ khác nhé!';
     }
-    var pool=applyFilters(intents);
-    var noMatch=(pool===data||!pool.length)&&intents[0]!=='unknown';
-    if(!pool.length)pool=data;
-    var intro=buildIntro(intents);
-    if(noMatch) intro='🤔 Không tìm được 100%, nhưng mấy quán này cũng khá gần ý chị/anh:\n';
-    if(pool.length===1) return intro+'\n\n'+fmtOne(pool[0]);
-    var picks=pick(pool,pool.length<=2?1:4);
-    if(picks.length===1) return intro+'\n\n'+fmtOne(picks[0]);
-    return intro+'\n\n'+picks.map(fmtShort).join('\n\n')+'\n\n💡 _Hỏi thêm về quán nào em kể chi tiết, có Google Maps luôn ạ!_';
+
+    var brandMatches = (!mentioned) ? findBrandRestaurants(msg) : [];
+    if (brandMatches.length > 0 && hApi) {
+      var brandOpen = brandMatches.filter(function (r) { return hApi.isOpenAtMinutes(r, timeCtx.minutes, timeCtx.dayOfWeek); });
+      if (brandOpen.length > 0) {
+        var topBrands = brandOpen.slice().sort(function (a, b) { return (b.rating - a.rating) || (b.reviews - a.reviews); }).slice(0, 4);
+        if (topBrands.length === 1) {
+          return '📍 Em tìm thấy quán phù hợp đang mở lúc **' + timeCtx.timeLabel + '**:\n\n' + fmtOne(topBrands[0], timeCtx);
+        }
+        return '📍 Em tìm thấy **' + brandOpen.length + ' cơ sở** đang mở lúc **' + timeCtx.timeLabel + '**:\n\n' + topBrands.map(function (item, idx) { return fmtShort(item, idx, timeCtx); }).join('\n\n') + '\n\n💡 _Bấm "Xem quán" để xem địa chỉ chi tiết & đặt món ạ!_';
+      }
+      var firstClosed = brandMatches[0];
+      var brandSim = hApi.findSimilarOpenRestaurants(firstClosed, {
+        targetMinutes: timeCtx.minutes,
+        targetDayOfWeek: timeCtx.dayOfWeek,
+        timeLabel: timeCtx.timeLabel,
+        limit: 3
+      });
+      var brandClosedMsg = '⏰ **' + firstClosed.name + '** [[ai-closed:🔴 Đóng cửa lúc ' + timeCtx.timeLabel + ']] (giờ phục vụ: **' + (firstClosed.openingHours || '07:00 - 22:00') + '**)  ' + detailBtnMarker(firstClosed, timeCtx, '📖 Xem quán');
+      if (brandSim.items.length) {
+        return brandClosedMsg + '\n\n🟢 **Gợi ý quán tương tự đang mở lúc ' + timeCtx.timeLabel + ':**\n\n' + brandSim.items.map(function (entry, idx) { return fmtShort(entry.restaurant, idx, timeCtx); }).join('\n\n');
+      }
+      return brandClosedMsg;
+    }
+
+    // 3. Random pick (prioritize restaurants OPEN at target time)
+    if (intents.indexOf('random') !== -1) {
+      var openData = hApi ? data.filter(function (r) { return hApi.isOpenAtMinutes(r, timeCtx.minutes, timeCtx.dayOfWeek); }) : data;
+      var randPool = openData.length ? openData : data;
+      var r = pick(randPool, 1)[0];
+      return rand(['🎲 Thôi để em chọn giúp! Lúc **' + timeCtx.timeLabel + '** thử quán đang mở này nhé:','✨ Nhắm mắt bắt ngẫu nhiên quán đang mở lúc **' + timeCtx.timeLabel + '**:','🏮 Cô Lan mách nhỏ một quán đang mở cực ngon:']) + '\n\n' + fmtOne(r, timeCtx);
+    }
+
+    // 4. Filter pool by query intents + active page filters (when compatible) + OPEN at timeCtx
+    var pool = applyFilters(intents);
+    var fApi = filterStateApi();
+    if (fApi && fApi.hasActiveFilters()) {
+      var fs = fApi.getState();
+      var activeFiltered = pool.filter(function (item) {
+        if (fs.district && fs.district !== 'all' && item.district !== fs.district) return false;
+        if (fs.priceTier && fs.priceTier !== 'all' && item.priceTier !== fs.priceTier) return false;
+        if (fs.peopleCategory && fs.peopleCategory !== 'all' && (item.peopleCategory || []).indexOf(fs.peopleCategory) === -1) return false;
+        if (fs.occasion && fs.occasion !== 'all' && (item.occasions || []).indexOf(fs.occasion) === -1) return false;
+        return true;
+      });
+      if (activeFiltered.length) pool = activeFiltered;
+    }
+
+    if (intents.indexOf('top') !== -1) {
+      if (!pool.length) pool = data;
+      var openTopPool = hApi ? pool.filter(function (r) { return hApi.isOpenAtMinutes(r, timeCtx.minutes, timeCtx.dayOfWeek); }) : pool;
+      var topSource = openTopPool.length ? openTopPool : pool;
+      var top = topSource.slice().sort(function (a, b) { return (b.rating - a.rating) || (b.reviews - a.reviews); }).slice(0, 4);
+      var topPrefix = openTopPool.length
+        ? '⭐ Những quán đánh giá cao nhất đang mở lúc **' + timeCtx.timeLabel + '**:'
+        : '⭐ Những quán đánh giá cao nhất (lưu ý giờ phục vụ lúc **' + timeCtx.timeLabel + '**):';
+      return topPrefix + '\n\n' + top.map(function (item, idx) { return fmtShort(item, idx, timeCtx); }).join('\n\n') + '\n\n💡 _Bấm "Xem quán" để mở thực đơn & đặt món ngay ạ!_';
+    }
+
+    var noMatch = (pool === data || !pool.length) && intents[0] !== 'unknown';
+    if (!pool.length) pool = data;
+
+    var openFiltered = hApi ? pool.filter(function (r) { return hApi.isOpenAtMinutes(r, timeCtx.minutes, timeCtx.dayOfWeek); }) : pool;
+    var finalPool = openFiltered.length ? openFiltered : (hApi ? data.filter(function (r) { return hApi.isOpenAtMinutes(r, timeCtx.minutes, timeCtx.dayOfWeek); }) : pool);
+    if (!finalPool.length) finalPool = pool;
+
+    var intro = buildIntro(intents);
+    if (!openFiltered.length && hApi) {
+      intro = '⏰ Lúc **' + timeCtx.timeLabel + '** các quán đúng tiêu chí đang đóng cửa, em gợi ý các quán **đang mở** gần nhất lúc ' + timeCtx.timeLabel + ':';
+    } else if (noMatch) {
+      intro = '🤔 Không tìm được 100%, nhưng mấy quán đang mở lúc **' + timeCtx.timeLabel + '** này cũng rất hợp ý chị/anh:';
+    } else {
+      intro += ' _(Lọc theo giờ **' + timeCtx.timeLabel + '**)_';
+    }
+
+    if (finalPool.length === 1) return intro + '\n\n' + fmtOne(finalPool[0], timeCtx);
+    var picks = pick(finalPool, finalPool.length <= 2 ? 1 : 4);
+    if (picks.length === 1) return intro + '\n\n' + fmtOne(picks[0], timeCtx);
+    return intro + '\n\n' + picks.map(function (item, idx) { return fmtShort(item, idx, timeCtx); }).join('\n\n') + '\n\n💡 _Bấm "Xem quán" hoặc hỏi tên quán bất kỳ để kiểm tra giờ mở cửa ạ!_';
   }
+
+  window.HNCoLanAI = {
+    OFF_TOPIC_REPLY: OFF_TOPIC_REPLY,
+    detectIntents: detectIntents,
+    isRestaurantRelated: isRestaurantRelated,
+    respond: respond
+  };
+
+  if (!btnOpen || !panel || !messagesEl) return;
 
   /* ---- RENDER ---- */
   function getTime(){ return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}); }
@@ -1885,6 +3049,9 @@
     s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
     s=s.replace(/_([^_]+)_/g,'<em>$1</em>');
     s=s.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" class="ai-link">$1 ↗</a>');
+    s=s.replace(/\[\[ai-open:([^\]]+)\]\]/g,'<span class="ai-status-open">$1</span>');
+    s=s.replace(/\[\[ai-closed:([^\]]+)\]\]/g,'<span class="ai-status-closed">$1</span>');
+    s=s.replace(/\[\[ai-detail:(\d+)\|([^|]*)\|([^\]]+)\]\]/g,'<button type="button" class="ai-open-detail-btn" data-ai-open-id="$1" data-ai-open-mins="$2">$3</button>');
     s=s.replace(/\n/g,'<br>');
     return s;
   }
@@ -1943,6 +3110,17 @@
   }
 
   /* ---- EVENTS ---- */
+  messagesEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-ai-open-id]');
+    if (!btn) return;
+    var id = parseInt(btn.getAttribute('data-ai-open-id'), 10);
+    var minsAttr = btn.getAttribute('data-ai-open-mins');
+    var mins = (minsAttr !== null && minsAttr !== '') ? parseInt(minsAttr, 10) : undefined;
+    if (!isNaN(id) && typeof window.openRestaurantDetail === 'function') {
+      window.openRestaurantDetail(id, isNaN(mins) ? undefined : mins);
+    }
+  });
+
   btnOpen.addEventListener('click',function(){if(isOpen)closePanel();else openPanel();});
   if(btnClose) btnClose.addEventListener('click',closePanel);
   if(btnClear) btnClear.addEventListener('click',function(){

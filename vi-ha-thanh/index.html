@@ -267,12 +267,37 @@
             <!-- Populated via JS -->
           </select>
         </div>
+
+        <!-- 5. Khung giờ đi ăn -->
+        <div class="filter-column">
+          <label for="timeSlotSelect">
+            <span>🕒</span> Khung giờ đi ăn
+          </label>
+          <div class="time-filter-wrap">
+            <select id="timeSlotSelect" class="custom-select">
+              <option value="now">🕒 Giờ hiện tại (Mặc định)</option>
+              <option value="07:00">07:00</option>
+              <option value="08:30">08:30</option>
+              <option value="11:30">11:30</option>
+              <option value="12:30">12:30</option>
+              <option value="14:30">14:30</option>
+              <option value="17:30">17:30</option>
+              <option value="19:00">19:00</option>
+              <option value="20:30">20:30</option>
+              <option value="22:30">22:30</option>
+              <option value="00:30">00:30</option>
+              <option value="custom">⏰ Chọn giờ tùy chỉnh...</option>
+            </select>
+            <input type="time" id="customTimeInput" class="custom-time-input" value="19:00" aria-label="Chọn khung giờ tùy chỉnh" hidden />
+          </div>
+        </div>
       </div>
 
       <!-- Filter Quick Pills & Reset -->
       <div class="filter-pills-row">
         <div class="quick-pills">
           <button class="pill-btn active" data-filter="all">Tất cả quán</button>
+          <button class="pill-btn" data-filter="open_now">🟢 Chỉ quán đang mở</button>
           <button class="pill-btn" data-filter="hadong">🏘️ Quán ngon Hà Đông</button>
           <button class="pill-btn" data-filter="michelin">🎖️ Đạt giải Michelin</button>
           <button class="pill-btn" data-filter="reservable">🪑 Có đặt bàn trước</button>
@@ -1128,13 +1153,17 @@
       <div class="ob-hub-header">
         <h2 id="ordersHubTitle">🛵 ĐƠN GIAO HÀNG &amp; LỊCH ĐẶT BÀN</h2>
         <p>Theo dõi hành trình tài xế giao món tận nơi và quản lý các bàn đã đặt trước tại Hà Nội Phố Vị.</p>
+        <div class="ob-live-sync-pill" id="obLiveSyncPill" aria-live="polite"><span class="ob-live-dot"></span> <span id="obLiveSyncText">Đồng bộ thời gian thực</span></div>
       </div>
-      <div class="ob-hub-tabs">
-        <button type="button" class="ob-hub-tab active" data-ob-tab="delivery">
+      <div class="ob-hub-tabs" role="tablist">
+        <button type="button" class="ob-hub-tab active" data-ob-tab="delivery" role="tab" aria-selected="true">
           🛵 Đơn giao hàng <span id="obTabDeliveryCount" class="ob-tab-pill">0</span>
         </button>
-        <button type="button" class="ob-hub-tab" data-ob-tab="reservations">
+        <button type="button" class="ob-hub-tab" data-ob-tab="reservations" role="tab" aria-selected="false">
           🪑 Lịch đặt bàn <span id="obTabReserveCount" class="ob-tab-pill">0</span>
+        </button>
+        <button type="button" class="ob-hub-tab" data-ob-tab="addresses" role="tab" aria-selected="false">
+          📍 Địa chỉ đã lưu <span id="obTabAddressCount" class="ob-tab-pill">0</span>
         </button>
       </div>
       <div id="ordersHubContent" class="ob-hub-content">
@@ -1150,6 +1179,7 @@
   <aside id="toastNotice" class="toast-notice" role="alert" aria-live="polite">
     <span>✨</span> <span>Thông báo</span>
   </aside>
+  <aside id="obUndoBar" class="ob-undo-bar" role="status" aria-live="polite" aria-hidden="true"><span id="obUndoText" class="ob-undo-text"></span><button type="button" id="obUndoBtn" class="ob-undo-btn">↩️ Hoàn tác</button><button type="button" id="obUndoClose" class="ob-undo-close" aria-label="Đóng thông báo hoàn tác">&times;</button></aside>
 
   <!-- Nostalgic Footer -->
   <footer class="vintage-footer">
@@ -1209,7 +1239,7 @@
     </div>
     <div class="ai-input-area">
       <textarea id="aiTextInput" class="ai-textarea"
-        placeholder="Hỏi cô Lan: Hôm nay ăn gì? Phở ngon ở đâu?..."
+        placeholder="Hỏi Cô Lan về quán ăn, món ngon, khung giờ mở cửa..."
         rows="1" maxlength="300" aria-label="Nhập câu hỏi"></textarea>
       <button id="aiBtnSend" class="ai-btn-send" title="Gửi"><span>➤</span></button>
     </div>
