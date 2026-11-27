@@ -1,0 +1,48 @@
+{
+  "name": "Hà Nội Phố Vị — Cẩm Nang Ẩm Thực & Đặt Bàn",
+  "short_name": "Phố Vị HN",
+  "description": "Khám phá 2400 quán ăn chuẩn vị Hà Nội, đặt món/đặt bàn real-time, tìm kiếm ngôn ngữ tự nhiên và gợi ý cá nhân hóa.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F9F4E8",
+  "theme_color": "#8B1E1E",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hôm Nay Ăn Gì?",
+      "short_name": "Ăn gì?",
+      "description": "Chọn ngẫu nhiên quán ngon Hà Nội theo bộ lọc hiện tại",
+      "url": "./index.html?lucky=1",
+      "icons": [
+        {
+          "src": "icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Đơn Giao & Đặt Bàn",
+      "short_name": "Đơn & Bàn",
+      "description": "Theo dõi đơn giao hàng tận nơi và lịch đặt bàn trước",
+      "url": "./index.html?hub=orders",
+      "icons": [
+        {
+          "src": "icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}

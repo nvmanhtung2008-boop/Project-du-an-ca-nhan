@@ -7,8 +7,17 @@
   <meta name="description" content="Trang web gợi ý 2400 quán ăn, nhà hàng đặc sản Hà Nội với định vị Google Maps, bộ lọc đa chiều theo giá, số người, địa điểm, sự kiện và máy Gashapon chọn món ngẫu nhiên độc đáo." />
   <meta name="keywords" content="quán ăn hà nội, phở bát đàn, bún chả đắc kim, chả cá thăng long, ẩm thực phố cổ, google maps nhà hàng hà nội, hôm nay ăn gì" />
   
-  <!-- Favicon -->
+  <!-- Favicon & PWA / SEO Meta -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏮</text></svg>" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#8B1E1E" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Hà Nội Phố Vị - Cẩm Nang Ẩm Thực &amp; Quán Ngon Hà Nội" />
+  <meta property="og:description" content="Khám phá 2400 quán ăn chuẩn vị Hà Nội, đặt món/đặt bàn real-time, tìm kiếm ngôn ngữ tự nhiên, bình chọn nhóm và gợi ý cá nhân hóa." />
+  <meta property="og:locale" content="vi_VN" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script id="seoJsonLd" type="application/ld+json">{}</script>
 
   <!-- Google Fonts: Cormorant Garamond, Playfair Display, Be Vietnam Pro -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -88,6 +97,9 @@
         <button id="soundToggleBtn" class="sound-toggle-btn" title="Bật/Tắt hiệu ứng âm thanh">
           <span>🔔</span> <span>Âm thanh: Bật</span>
         </button>
+
+        <button type="button" id="langToggleBtn" class="lang-toggle-btn" title="Chuyển ngôn ngữ Việt / Anh">🇻🇳 VI</button>
+        <button type="button" id="btnInstallPwa" class="pwa-install-btn" title="Cài ứng dụng Hà Nội Phố Vị">📲 <span data-i18n="install_app">Cài App</span></button>
       </div>
     </div>
   </aside>
@@ -115,12 +127,12 @@
         <div class="hero-actions">
           <button id="btnOpenClawHero" class="btn-wheel-hero" title="Mở máy Gashapon ẩm thực chọn quán ngẫu nhiên">
             <span style="font-size: 1.3rem;">🎰</span>
-            <span>Hôm Nay Ăn Gì? (Máy Gashapon Món Ăn)</span>
+            <span data-i18n="lucky_btn">Hôm Nay Ăn Gì? (Máy Gashapon Món Ăn)</span>
           </button>
           
           <button id="btnOpenFavoritesHero" class="btn-favorites" title="Xem danh sách quán đã lưu">
             <span>❤️</span>
-            <span>Sổ Tay Quán Quen</span>
+            <span data-i18n="fav_btn">Sổ Tay Quán Quen</span>
             <span id="favCountBadge" class="favorites-count-badge">0</span>
           </button>
 
@@ -146,8 +158,18 @@
 
           <button id="btnOpenOrdersHubHero" class="btn-orders-hero" title="Theo dõi đơn giao hàng tận nơi & lịch đặt bàn trước">
             <span>🛵</span>
-            <span>Đơn Giao &amp; Đặt Bàn</span>
+            <span data-i18n="orders_btn">Đơn Giao &amp; Đặt Bàn</span>
             <span id="ordersHubCountBadge" class="orders-count-badge">0</span>
+          </button>
+
+          <button type="button" id="btnOpenEngageHub" class="btn-engage-hero" title="Danh sách riêng, Bình chọn nhóm &amp; Huy hiệu">
+            <span>🏆</span>
+            <span data-i18n="engage_hub">Danh Sách &amp; Bình Chọn</span>
+          </button>
+
+          <button type="button" id="btnOpenOwnerPortal" class="btn-owner-hero" title="Cổng chủ quán đăng ký &amp; cập nhật thông tin">
+            <span>🏪</span>
+            <span data-i18n="owner_portal">Chủ Quán</span>
           </button>
 
           <button id="btnOpenMoviesHero" class="btn-movies-hero" title="Rạp Chiếu Phim Hà Nội Phố Vị - Xem phim Full HD không quảng cáo cá độ">
@@ -224,6 +246,16 @@
             autocomplete="off"
           />
         </div>
+        <div class="nlp-search-bar">
+          <button type="button" id="btnNlpSearch" class="btn-nlp-search">✨ Tìm ngôn ngữ tự nhiên</button>
+          <button type="button" id="btnClaudeConfig" class="btn-claude-config" title="Cấu hình Claude API (tùy chọn)">⚙️ Claude API</button>
+          <div class="nlp-examples">
+            <button type="button" class="nlp-example-chip" data-nlp="quán bún chả yên tĩnh gần Hồ Tây">quán bún chả yên tĩnh gần Hồ Tây</button>
+            <button type="button" class="nlp-example-chip" data-nlp="lẩu giá rẻ cho nhóm bạn ở Cầu Giấy tối nay">lẩu rẻ nhóm bạn Cầu Giấy tối nay</button>
+            <button type="button" class="nlp-example-chip" data-nlp="quán cà phê làm việc ở Hoàn Kiếm">quán cà phê làm việc Hoàn Kiếm</button>
+          </div>
+        </div>
+        <div id="nlpParsedChips" class="nlp-parsed-chips" hidden></div>
       </div>
 
       <!-- Multi-Dimensional Filters -->
@@ -308,6 +340,9 @@
         </div>
       </div>
     </section>
+
+    <!-- Personalized Recommendations Section -->
+    <section id="personalizedSection" class="personalized-section" aria-label="Gợi ý cá nhân hóa"></section>
 
     <!-- Results Count & Sorting Header -->
     <div class="results-header" id="resultsHeader">
@@ -1181,6 +1216,67 @@
   </aside>
   <aside id="obUndoBar" class="ob-undo-bar" role="status" aria-live="polite" aria-hidden="true"><span id="obUndoText" class="ob-undo-text"></span><button type="button" id="obUndoBtn" class="ob-undo-btn">↩️ Hoàn tác</button><button type="button" id="obUndoClose" class="ob-undo-close" aria-label="Đóng thông báo hoàn tác">&times;</button></aside>
 
+  <!-- ===== WHAT TO EAT FILTER-AWARE RANDOMIZER MODAL ===== -->
+  <div id="whatToEatModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Hôm nay ăn gì?">
+    <div class="modal-container wte-box">
+      <button type="button" id="btnCloseWhatToEat" class="modal-close-btn" aria-label="Đóng chọn món ngẫu nhiên">&times;</button>
+      <div id="whatToEatBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== ENGAGE HUB MODAL (CUSTOM LISTS, GROUP POLLS & REWARDS) ===== -->
+  <div id="engageHubModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Danh sách riêng, Bình chọn nhóm &amp; Huy hiệu">
+    <div class="modal-container engage-modal-box">
+      <button type="button" id="btnCloseEngageHub" class="modal-close-btn" aria-label="Đóng trung tâm cộng đồng">&times;</button>
+      <div id="engageHubTabs" class="engage-tabs" role="tablist">
+        <button type="button" class="engage-tab active" data-engage-tab="lists" role="tab" aria-selected="true">📂 Danh sách riêng</button>
+        <button type="button" class="engage-tab" data-engage-tab="polls" role="tab" aria-selected="false">🗳️ Bình chọn nhóm</button>
+        <button type="button" class="engage-tab" data-engage-tab="rewards" role="tab" aria-selected="false">🏆 Điểm &amp; Huy hiệu</button>
+      </div>
+      <div id="engageHubContent"></div>
+    </div>
+  </div>
+
+  <!-- ===== OWNER PORTAL MODAL ===== -->
+  <div id="ownerPortalModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Cổng chủ quán">
+    <div class="modal-container owner-modal-box">
+      <button type="button" id="btnCloseOwnerPortal" class="modal-close-btn" aria-label="Đóng cổng chủ quán">&times;</button>
+      <div id="ownerPortalTabs" class="engage-tabs" role="tablist">
+        <button type="button" class="engage-tab active" data-owner-tab="register" role="tab" aria-selected="true">➕ Đăng ký quán mới</button>
+        <button type="button" class="engage-tab" data-owner-tab="update" role="tab" aria-selected="false">✏️ Cập nhật thông tin</button>
+        <button type="button" class="engage-tab" data-owner-tab="reports" role="tab" aria-selected="false">🚩 Báo cáo từ thực khách</button>
+      </div>
+      <div id="ownerPortalContent"></div>
+    </div>
+  </div>
+
+  <!-- ===== REPORT PLACE MODAL ===== -->
+  <div id="reportPlaceModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Báo lỗi hoặc đóng cửa quán">
+    <div class="modal-container owner-modal-box">
+      <button type="button" id="btnCloseReportModal" class="modal-close-btn" aria-label="Đóng báo lỗi">&times;</button>
+      <div id="reportPlaceBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== CLAUDE API CONFIG MODAL ===== -->
+  <div id="claudeApiModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Cấu hình Claude API">
+    <div class="modal-container owner-modal-box">
+      <button type="button" id="btnCloseClaudeModal" class="modal-close-btn" aria-label="Đóng cấu hình Claude API">&times;</button>
+      <div id="claudeApiBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== PWA INSTALL GUIDE MODAL ===== -->
+  <div id="pwaInstallModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Cài đặt ứng dụng Hà Nội Phố Vị">
+    <div class="modal-container owner-modal-box">
+      <button type="button" id="btnClosePwaModal" class="modal-close-btn" aria-label="Đóng hướng dẫn cài App">&times;</button>
+      <div id="pwaInstallBody"></div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav id="mobileBottomNav" class="mobile-bottom-nav" aria-label="Điều hướng di động"><button type="button" id="mobNavExplore" class="mob-nav-btn"><span>🍜</span><span>Khám phá</span></button><button type="button" id="mobNavRandom" class="mob-nav-btn"><span>🎲</span><span>Ăn gì?</span></button><button type="button" id="mobNavEngage" class="mob-nav-btn"><span>🏆</span><span>Nhóm</span></button><button type="button" id="mobNavOrders" class="mob-nav-btn"><span>🛵</span><span>Đơn bàn</span></button><button type="button" id="mobNavOwner" class="mob-nav-btn"><span>🏪</span><span>Chủ quán</span></button></nav>
+
   <!-- Nostalgic Footer -->
   <footer class="vintage-footer">
     <div class="footer-inner">
@@ -1342,9 +1438,13 @@
   <!-- Scripts -->
   <script src="theme.js"></script>
   <script src="data.js"></script>
+  <script src="utilities_i18n.js"></script>
   <script src="app.js"></script>
   <script src="billsplit.js"></script>
   <script src="order_booking.js"></script>
+  <script src="smart_discovery.js"></script>
+  <script src="community_engage.js"></script>
+  <script src="pwa_seo.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
   <script src="movies.js"></script>
 </body>

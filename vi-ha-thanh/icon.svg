@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Hà Nội Phố Vị Lantern Emblem">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="46%" r="55%">
+      <stop offset="0%" stop-color="#A82828" />
+      <stop offset="70%" stop-color="#8B1E1E" />
+      <stop offset="100%" stop-color="#6A1414" />
+    </radialGradient>
+    <radialGradient id="lanternGlow" cx="50%" cy="48%" r="50%">
+      <stop offset="0%" stop-color="#FFFDF7" />
+      <stop offset="55%" stop-color="#F9F4E8" />
+      <stop offset="100%" stop-color="#EBD39A" />
+    </radialGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F3DC96" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#A8821D" />
+    </linearGradient>
+  </defs>
+
+  <!-- Indochine Lacquer Background -->
+  <rect x="0" y="0" width="512" height="512" fill="url(#bgGlow)" />
+
+  <!-- Outer & Inner Indochine Gold Frames (safe inside maskable zone) -->
+  <rect x="34" y="34" width="444" height="444" rx="44" ry="44" fill="none" stroke="url(#goldGrad)" stroke-width="10" />
+  <rect x="52" y="52" width="408" height="408" rx="32" ry="32" fill="none" stroke="#F9F4E8" stroke-width="2" stroke-opacity="0.55" />
+
+  <!-- Indochine Corner Ornaments -->
+  <path d="M52 104 L52 52 L104 52 M72 90 L72 72 L90 72" fill="none" stroke="#D4AF37" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M460 104 L460 52 L408 52 M440 90 L440 72 L422 72" fill="none" stroke="#D4AF37" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M52 408 L52 460 L104 460 M72 422 L72 440 L90 440" fill="none" stroke="#D4AF37" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M460 408 L460 460 L408 460 M440 422 L440 440 L422 440" fill="none" stroke="#D4AF37" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Soft Halo Behind Lantern -->
+  <circle cx="256" cy="248" r="142" fill="#D4AF37" fill-opacity="0.10" />
+  <circle cx="256" cy="248" r="118" fill="none" stroke="#D4AF37" stroke-width="2" stroke-dasharray="6 8" stroke-opacity="0.6" />
+
+  <!-- Hanging Cord & Gold Ring -->
+  <line x1="256" y1="68" x2="256" y2="114" stroke="#D4AF37" stroke-width="6" stroke-linecap="round" />
+  <circle cx="256" cy="112" r="10" fill="none" stroke="url(#goldGrad)" stroke-width="5" />
+
+  <!-- Top Lantern Crown -->
+  <path d="M210 128 L302 128 L292 146 L220 146 Z" fill="url(#goldGrad)" stroke="#F9F4E8" stroke-width="2" stroke-linejoin="round" />
+  <rect x="200" y="146" width="112" height="14" rx="5" fill="#D4AF37" />
+
+  <!-- Lantern Body -->
+  <ellipse cx="256" cy="246" rx="108" ry="96" fill="url(#lanternGlow)" stroke="url(#goldGrad)" stroke-width="7" />
+
+  <!-- Traditional Vertical Lantern Ribs -->
+  <ellipse cx="256" cy="246" rx="70" ry="95" fill="none" stroke="#D4AF37" stroke-width="3.5" stroke-opacity="0.85" />
+  <ellipse cx="256" cy="246" rx="34" ry="95" fill="none" stroke="#D4AF37" stroke-width="3.5" stroke-opacity="0.85" />
+  <line x1="150" y1="246" x2="362" y2="246" stroke="#D4AF37" stroke-width="2.5" stroke-opacity="0.45" />
+
+  <!-- Central Red Lacquer Medallion -->
+  <circle cx="256" cy="246" r="46" fill="#8B1E1E" stroke="url(#goldGrad)" stroke-width="5" />
+  <circle cx="256" cy="246" r="37" fill="none" stroke="#F9F4E8" stroke-width="1.5" stroke-opacity="0.7" />
+
+  <!-- Stylized Bowl & Chopsticks Emblem Inside Medallion -->
+  <path d="M234 250 C234 266, 278 266, 278 250 Z" fill="#F9F4E8" />
+  <rect x="244" y="264" width="24" height="5" rx="2.5" fill="#D4AF37" />
+  <line x1="240" y1="230" x2="274" y2="244" stroke="#D4AF37" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="246" y1="224" x2="276" y2="240" stroke="#F9F4E8" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Bottom Lantern Collar -->
+  <rect x="204" y="336" width="104" height="14" rx="5" fill="#D4AF37" />
+  <path d="M222 350 L290 350 L282 366 L230 366 Z" fill="url(#goldGrad)" stroke="#F9F4E8" stroke-width="2" stroke-linejoin="round" />
+
+  <!-- Gold Tassel & Pearl -->
+  <circle cx="256" cy="378" r="8" fill="#F9F4E8" stroke="#D4AF37" stroke-width="3" />
+  <path d="M244 388 L268 388 L274 434 L256 426 L238 434 Z" fill="url(#goldGrad)" />
+  <line x1="256" y1="388" x2="256" y2="438" stroke="#F9F4E8" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="248" y1="390" x2="244" y2="432" stroke="#8B1E1E" stroke-width="1.5" stroke-opacity="0.55" />
+  <line x1="264" y1="390" x2="268" y2="432" stroke="#8B1E1E" stroke-width="1.5" stroke-opacity="0.55" />
+</svg>

@@ -25,7 +25,31 @@
   };
 
   // --- OPENING HOURS ENGINE & FILTER STATE API ---
-  const HOURS_PARSE_CACHE = {};
+  const hoursParseCache = {};
+  const HOURS_PARSE_CACHE = hoursParseCache;
+  let dataVersion = 1;
+  const filterCache = {};
+  const filterCacheOrder = [];
+  const FILTER_CACHE_MAX = 40;
+
+  function invalidateFilterCache() {
+    Object.keys(filterCache).forEach((k) => { delete filterCache[k]; });
+    filterCacheOrder.length = 0;
+  }
+
+  function i18nText(key, fallback) {
+    if (window.HNi18n && typeof window.HNi18n.t === 'function') {
+      return window.HNi18n.t(key, fallback);
+    }
+    return fallback;
+  }
+
+  function i18nCategory(cat) {
+    if (window.HNi18n && typeof window.HNi18n.translateCategory === 'function') {
+      return window.HNi18n.translateCategory(cat);
+    }
+    return cat;
+  }
   const PRICE_TIER_ORDER = ['budget', 'moderate', 'upscale', 'luxury'];
   const DISH_STOP_WORDS = {
     mon: 1, an: 1, cua: 1, va: 1, voi: 1, cho: 1, tai: 1, cac: 1, nhung: 1,
@@ -660,6 +684,8 @@
     } catch (e) {
       console.warn('LocalStorage error:', e);
     }
+    dataVersion++;
+    invalidateFilterCache();
     updateFavoritesBadge();
     updateSoundButtonUI();
   }
@@ -678,11 +704,13 @@
     const isFav = state.favorites.has(id);
     if (isFav) {
       state.favorites.delete(id);
-      showToast('Đã bỏ quán khỏi Sổ tay quán quen');
+      showToast(i18nText('toast_fav_removed', 'Đã bỏ quán khỏi Sổ tay quán quen'));
     } else {
       state.favorites.add(id);
-      showToast('❤️ Đã lưu vào Sổ tay quán quen!');
+      showToast(i18nText('toast_fav_added', '❤️ Đã lưu vào Sổ tay quán quen!'));
     }
+    dataVersion++;
+    invalidateFilterCache();
     saveFavorites();
     renderRestaurants();
   }
@@ -732,9 +760,25 @@
   function getFilteredRestaurants() {
     const rawQuery = state.search.trim().toLowerCase();
     const normQuery = normalizeVi(state.search);
-    const timeCtx = state.quickFilter === 'open_now' ? getSelectedTimeContext() : null;
+    const timeCtx = getSelectedTimeContext();
+    const cacheKey = JSON.stringify({
+      search: rawQuery,
+      priceTier: state.priceTier,
+      peopleCategory: state.peopleCategory,
+      district: state.district,
+      occasion: state.occasion,
+      quickFilter: state.quickFilter,
+      sortBy: state.sortBy,
+      dataVersion: dataVersion,
+      targetMin: timeCtx.minutes,
+      targetDay: timeCtx.dayOfWeek
+    });
 
-    return RESTAURANTS_DATA.filter((item) => {
+    if (filterCache[cacheKey]) {
+      return filterCache[cacheKey].slice();
+    }
+
+    const result = RESTAURANTS_DATA.filter((item) => {
       const badges = Array.isArray(item.specialBadges) ? item.specialBadges : [];
       const dishes = Array.isArray(item.signatureDishes) ? item.signatureDishes : [];
       const peopleCats = Array.isArray(item.peopleCategory) ? item.peopleCategory : [];
@@ -820,6 +864,14 @@
           return 0;
       }
     });
+
+    if (filterCacheOrder.length >= FILTER_CACHE_MAX) {
+      const oldestKey = filterCacheOrder.shift();
+      if (oldestKey !== undefined) delete filterCache[oldestKey];
+    }
+    filterCacheOrder.push(cacheKey);
+    filterCache[cacheKey] = result;
+    return result.slice();
   }
 
   // --- RENDER RESTAURANTS WITH PAGINATION ---
@@ -837,21 +889,22 @@
 
     if (totalItems === 0) {
       if (counterEl) {
-        counterEl.innerHTML = `Không tìm thấy quán ăn phù hợp`;
+        counterEl.innerHTML = i18nText('results_empty', 'Không tìm thấy quán ăn phù hợp');
       }
       container.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">🥢</div>
-          <h3>Không tìm thấy quán ăn phù hợp</h3>
-          <p>Hãy thử giảm bớt các điều kiện lọc hoặc xóa từ khóa tìm kiếm để khám phá thêm nhiều quán ngon khác bạn nhé.</p>
+          <h3>${escapeHtml(i18nText('results_empty', 'Không tìm thấy quán ăn phù hợp'))}</h3>
+          <p>${escapeHtml(i18nText('results_empty_sub', 'Hãy thử giảm bớt các điều kiện lọc hoặc xóa từ khóa tìm kiếm để khám phá thêm nhiều quán ngon khác bạn nhé.'))}</p>
           <button class="btn-spin-wheel" id="btnResetFiltersEmpty">
-            <span>↺</span> Xóa tất cả bộ lọc
+            <span>↺</span> ${escapeHtml(i18nText('reset_filters', 'Xóa tất cả bộ lọc'))}
           </button>
         </div>
       `;
       if (paginationContainer) paginationContainer.innerHTML = '';
       document.getElementById('btnResetFiltersEmpty')?.addEventListener('click', resetAllFilters);
       updateClawPool();
+      window.dispatchEvent(new CustomEvent('hn-filters-changed', { detail: { state: getFilterStateSnapshot(), count: 0 } }));
       return;
     }
 
@@ -892,7 +945,7 @@
       const peopleRange = item.peopleRange || '1 - 6 người';
       const openingHours = item.openingHours || item.openHours || '07:00 - 22:00';
       const isOpenNow = isOpenAtMinutes(item, timeCtx.minutes, timeCtx.dayOfWeek);
-      const openBadgeHtml = `<div class="card-open-status ${isOpenNow ? 'is-open' : 'is-closed'}">${isOpenNow ? '🟢 Đang mở lúc ' : '🔴 Đóng cửa lúc '}${escapeHtml(timeCtx.timeLabel)}</div>`;
+      const openBadgeHtml = `<div class="card-open-status ${isOpenNow ? 'is-open' : 'is-closed'}">${isOpenNow ? i18nText('status_open_at', '🟢 Đang mở lúc ') : i18nText('status_closed_at', '🔴 Đóng cửa lúc ')}${escapeHtml(timeCtx.timeLabel)}</div>`;
       const description = item.description || item.subname || '';
       const tips = item.tips || ('Mở cửa khung giờ ' + openingHours + '.');
       const mapsUrl = item.mapsUrl || ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((item.name || '') + ' ' + (item.address || '')));
@@ -932,7 +985,7 @@
 
           <div class="card-body">
             <div class="card-header-meta">
-              <span>${escapeHtml(item.category || 'Ẩm thực Hà Nội')}</span>
+              <span>${escapeHtml(i18nCategory(item.category || 'Ẩm thực Hà Nội'))}</span>
               <span>👥 ${escapeHtml(peopleRange)}</span>
             </div>
 
@@ -973,7 +1026,7 @@
 
             <div class="card-actions">
               <button class="btn-card-details" data-action="detail" data-id="${item.id}">
-                <span>📖</span> Chi tiết & Mẹo
+                <span>📖</span> ${escapeHtml(i18nText('card_details_btn', 'Chi tiết & Mẹo'))}
               </button>
               <a 
                 href="${mapsUrl}" 
@@ -988,11 +1041,11 @@
             </div>
             <div class="card-actions-order ${isReservable ? 'two-cols' : 'one-col'}">
               <button class="btn-card-delivery" data-action="delivery" data-id="${item.id}" title="Đặt món giao tận nơi như ShopeeFood">
-                <span>🛵</span> Đặt giao tận nơi
+                <span>🛵</span> ${escapeHtml(i18nText('card_delivery_btn', 'Đặt giao tận nơi'))}
               </button>
               ${isReservable ? `
               <button class="btn-card-reserve" data-action="reserve" data-id="${item.id}" title="Đặt bàn trước tại nhà hàng">
-                <span>🪑</span> Đặt bàn trước
+                <span>🪑</span> ${escapeHtml(i18nText('card_reserve_btn', 'Đặt bàn trước'))}
               </button>` : ''}
             </div>
           </div>
@@ -1006,6 +1059,7 @@
     // Render pagination controls
     renderPagination(totalItems, totalPages, startIndex, endIndex);
     updateClawPool();
+    window.dispatchEvent(new CustomEvent('hn-filters-changed', { detail: { state: getFilterStateSnapshot(), count: totalItems } }));
   }
 
   // --- RENDER PAGINATION UI ---
@@ -1511,6 +1565,7 @@
             </div>
           </div>
         </div>
+        <div id="detailBusyHoursMount" data-place-id="${restaurant.id}"></div>
 
         <h3 class="detail-section-title">
           <span>🥢</span> Món Đinh Chuẩn Vị Phải Thử
@@ -1538,6 +1593,7 @@
           ${occasionsHtml}
         </div>
 
+        <div id="detailReviewsMount" data-place-id="${restaurant.id}"></div>
         <div class="detail-address-box">
           <div>
             <strong style="display:block; margin-bottom: 2px;">📍 Vị trí trên Google Maps:</strong>
@@ -1548,6 +1604,7 @@
           </button>
         </div>
 
+        <div id="detailEngageActionsMount" class="detail-engage-actions" data-place-id="${restaurant.id}"></div>
         <div class="detail-footer-actions">
           <button class="btn-favorites" id="btnModalToggleFav">
             ${isFav ? '❤️ Đã lưu vào sổ tay' : '🤍 Lưu vào sổ tay'}
@@ -1634,6 +1691,14 @@
       closeDetailModal();
       if (window.HNOrderBooking) window.HNOrderBooking.openReservation(restaurant.id);
     });
+
+    window.dispatchEvent(new CustomEvent('hn-detail-opened', {
+      detail: {
+        restaurant: restaurant,
+        targetMinutes: targetMinutes,
+        isOpen: isOpenAtTarget
+      }
+    }));
   }
 
   function closeDetailModal() {
@@ -1652,7 +1717,13 @@
   function initClawModal() {
     $g('btnOpenClawHero')?.addEventListener('click', openClawModal);
     $g('btnCloseClawModal')?.addEventListener('click', closeClawModal);
-    $g('btnLuckyFast')?.addEventListener('click', pickInstantRandom);
+    $g('btnLuckyFast')?.addEventListener('click', () => {
+      if (window.HNWhatToEat && typeof window.HNWhatToEat.open === 'function') {
+        window.HNWhatToEat.open();
+      } else {
+        pickInstantRandom();
+      }
+    });
 
     document.querySelectorAll('input[name="clawSource"]').forEach((radio) => {
       radio.addEventListener('change', updateClawPool);
@@ -2386,6 +2457,90 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
+
+  function applyFiltersPatch(patch) {
+    if (!patch || typeof patch !== 'object') return;
+
+    if (Object.prototype.hasOwnProperty.call(patch, 'search')) {
+      state.search = patch.search ? String(patch.search) : '';
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) searchInput.value = state.search;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'priceTier')) {
+      state.priceTier = patch.priceTier || 'all';
+      const priceSelect = document.getElementById('priceTierSelect');
+      if (priceSelect) priceSelect.value = state.priceTier;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'peopleCategory')) {
+      state.peopleCategory = patch.peopleCategory || 'all';
+      const peopleSelect = document.getElementById('peopleCategorySelect');
+      if (peopleSelect) peopleSelect.value = state.peopleCategory;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'district')) {
+      state.district = patch.district || 'all';
+      const districtSelect = document.getElementById('districtSelect');
+      if (districtSelect) districtSelect.value = state.district;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'occasion')) {
+      state.occasion = patch.occasion || 'all';
+      const occasionSelect = document.getElementById('occasionSelect');
+      if (occasionSelect) occasionSelect.value = state.occasion;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'quickFilter')) {
+      state.quickFilter = patch.quickFilter || 'all';
+      document.querySelectorAll('.pill-btn[data-filter]').forEach((p) => {
+        p.classList.toggle('active', p.dataset.filter === state.quickFilter);
+      });
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'timeSlot')) {
+      state.timeSlot = patch.timeSlot || 'now';
+      const timeSlotSelect = document.getElementById('timeSlotSelect');
+      if (timeSlotSelect) timeSlotSelect.value = state.timeSlot;
+      const customTimeInput = document.getElementById('customTimeInput');
+      if (customTimeInput) customTimeInput.hidden = (state.timeSlot !== 'custom');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'customTime')) {
+      state.customTime = patch.customTime || '19:00';
+      const customTimeInput = document.getElementById('customTimeInput');
+      if (customTimeInput) customTimeInput.value = state.customTime;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'sortBy')) {
+      state.sortBy = patch.sortBy || 'rating_desc';
+      const sortSelect = document.getElementById('sortBySelect');
+      if (sortSelect) sortSelect.value = state.sortBy;
+    }
+
+    state.currentPage = 1;
+    invalidateFilterCache();
+    renderRestaurants();
+  }
+
+  function invalidateCacheAndRender() {
+    dataVersion++;
+    invalidateFilterCache();
+    renderRestaurants();
+  }
+
+  window.openRestaurantDetail = openDetailModal;
+  window.HNAppBridge = {
+    getFilteredRestaurants: getFilteredRestaurants,
+    getAllRestaurants: function () {
+      return (typeof RESTAURANTS_DATA !== 'undefined' && Array.isArray(RESTAURANTS_DATA)) ? RESTAURANTS_DATA : [];
+    },
+    getFavorites: function () {
+      return [...state.favorites];
+    },
+    toggleFavorite: toggleFavorite,
+    applyFiltersPatch: applyFiltersPatch,
+    resetAllFilters: resetAllFilters,
+    invalidateCacheAndRender: invalidateCacheAndRender,
+    openDetail: openDetailModal,
+    showToast: showToast
+  };
+
+  window.addEventListener('hn-lang-changed', () => {
+    renderRestaurants();
+  });
 
   // --- INIT APPLICATION ---
   function init() {
